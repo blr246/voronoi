@@ -7,12 +7,10 @@ find_package(OpenMP REQUIRED)
 
 # Library targets:
 #   voronoi_core - shared objects for voronoi
-#project(voronoi_core)
-#set(SRCS
-#    "voronoi_core.cpp"
-#    "combination.cpp"
-#    "data_file.cpp")
-#add_library(voronoi_core STATIC ${SRCS} ${HEADERS})
+project(voronoi_core)
+set(SRCS
+    "voronoi_core.cpp")
+add_library(voronoi_core STATIC ${SRCS} ${HEADERS})
 
 # Enable OpenMP in UNIX.
 # Enable multicore builds in MSVC.
@@ -31,7 +29,7 @@ project(voronoi)
 set(SRCS
     "voronoi.cpp")
 add_executable(voronoi ${SRCS} ${HEADERS})
-target_link_libraries(voronoi)
+target_link_libraries(voronoi voronoi_core)
 if(WIN32)
   set_target_properties(voronoi PROPERTIES
                         COMPILE_FLAGS ${OpenMP_CXX_FLAGS})
@@ -43,7 +41,7 @@ if(HPS_GTEST_ENABLED)
       "voronoi_gtest.cpp")
   include_directories(${GTEST_INCLUDE_DIRS})
   add_executable(voronoi_gtest ${SRCS} ${HEADERS})
-  target_link_libraries(voronoi_gtest gtest)
+  target_link_libraries(voronoi_gtest voronoi_core gtest)
   if(WIN32)
     set_target_properties(voronoi_gtest PROPERTIES
                           COMPILE_FLAGS ${OpenMP_CXX_FLAGS})

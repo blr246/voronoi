@@ -11,15 +11,7 @@ namespace hps
 namespace geometry
 {
 
-template <typename NumericType>
-struct Point
-{
-  Point() : x(0), y(0) {}
-  Point(const NumericType x_, const NumericType y_) : x(x_), y(y_) {}
-  NumericType x;
-  NumericType y;
-};
-
+/// <summary> A 2-dimensional vector. </summary>
 template <typename NumericType>
 struct Vector2
 {
@@ -37,39 +29,109 @@ struct Vector2
   };
 };
 
+/// <summary> Addition for vectors. </summary>
+template <typename NumericType>
+inline const Vector2<NumericType> operator+(const Vector2<NumericType>& lhs,
+                                            const Vector2<NumericType>& rhs)
+{
+  return Vector2<NumericType>(lhs.x + rhs.x, lhs.y + rhs.y);
+}
+
+/// <summary> Subtraction for vectors. </summary>
+template <typename NumericType>
+inline const Vector2<NumericType> operator-(const Vector2<NumericType>& lhs,
+                                            const Vector2<NumericType>& rhs)
+{
+  return Vector2<NumericType>(lhs.x - rhs.x, lhs.y - rhs.y);
+}
+
+/// <summary> Unary minus for vectors. </summary>
+template <typename NumericType>
+inline const Vector2<NumericType> operator-(const Vector2<NumericType>& v)
+{
+  return Vector2<NumericType>(-v.x, -v.y);
+}
+
+/// <summary> Equality test for vectors. </summary>
+template <typename NumericType>
+inline bool operator==(const Vector2<NumericType>& lhs,
+                       const Vector2<NumericType>& rhs)
+{
+  return (lhs.x == rhs.x) && (lhs.y == rhs.y);
+}
+
+/// <summary> Inequality test for vectors. </summary>
+template <typename NumericType>
+inline bool operator!=(const Vector2<NumericType>& lhs,
+                       const Vector2<NumericType>& rhs)
+{
+  return !(lhs == rhs);
+}
+
+/// <summary> Scalar multiplication for vectors. </summary>
+template <typename NumericType, typename ScalarType>
+inline const Vector2<NumericType> operator*(const Vector2<NumericType>& lhs,
+                                            const ScalarType rhs)
+{
+  return Vector2<NumericType>(lhs.x * rhs, lhs.y * rhs);
+}
+
+/// <summary> Scalar multiplication for vectors. </summary>
+template <typename NumericType, typename ScalarType>
+inline const Vector2<NumericType> operator*(const ScalarType lhs,
+                                            const Vector2<NumericType>& rhs)
+{
+  return Vector2<NumericType>(lhs * rhs.x, lhs * rhs.y);
+}
+
+/// <summary> Compute vector length squared. </summary>
+template <typename NumericType>
+inline NumericType Vector2LengthSq(const Vector2<NumericType>& v)
+{
+  return (v.x * v.x) + (v.y * v.y);
+}
+
+/// <summary> Compute vector length. </summary>
+template <typename NumericType>
+inline float Vector2Length(const Vector2<NumericType>& v)
+{
+  return sqrt(static_cast<float>(Vector2LengthSq(v)));
+}
+
+/// <summary> A segment defined by two points. </summary>
 template <typename NumericType>
 struct Segment
 {
   Segment() : p0(), p1() {}
-  Segment(const Point<NumericType>& p0_, const Point<NumericType>& p1_)
+  Segment(const Vector2<NumericType>& p0_, const Vector2<NumericType>& p1_)
     : p0(p0_),
       p1(p1_)
   {}
-  Point<NumericType> p0;
-  Point<NumericType> p1;
+  Vector2<NumericType> p0;
+  Vector2<NumericType> p1;
 };
 
 template <typename NumericType>
 struct DirectedSegment
 {
   DirectedSegment() : p0(), p1() {}
-  DirectedSegment(const Point<NumericType>& p0_, const Point<NumericType>& p1_)
+  DirectedSegment(const Vector2<NumericType>& p0_, const Vector2<NumericType>& p1_)
     : p0(p0_),
       p1(p1_)
   {}
-  Point<NumericType> p0;
-  Point<NumericType> p1;
+  Vector2<NumericType> p0;
+  Vector2<NumericType> p1;
 };
 
 template <typename NumericType>
 struct Line
 {
   Line() : p0(), dir() {}
-  Line(const Point<NumericType>& p0_, const Vector2<NumericType>& dir_)
+  Line(const Vector2<NumericType>& p0_, const Vector2<NumericType>& dir_)
     : p0(p0_),
       dir(dir_)
   {}
-  Point<NumericType> p0;
+  Vector2<NumericType> p0;
   Vector2<NumericType> dir;
 };
 
@@ -101,6 +163,52 @@ struct AxisAlignedBox
 //    Line<NumericType> lines[BoxSides];
 //  };
 //};
+
+/// <summary> Rotate vector 90 degrees counter-clockwise. </summary>
+template <typename NumericType>
+inline Vector2<NumericType> Vector2Rotate90(const Vector2<NumericType>& v)
+{
+  // Matrix | 0, -1 |
+  //        | 1,  0 | is a 90 degree rotation in the x-y plane.
+  return Vector2<NumericType>(-v.y, v.x);
+}
+
+/// <summary> Compute dot product of two vectors. </summary>
+template <typename NumericType>
+inline NumericType Vector2Dot(const Vector2<NumericType>& lhs,
+                              const Vector2<NumericType>& rhs)
+{
+  return (lhs.x * rhs.x) + (lhs.y * rhs.y);
+}
+
+/// <summary> Finds a single intersection point between two lines. </summary>
+template <typename NumericType>
+inline bool LineIntersectLineUnique(const Line<NumericType>& a,
+                                    const Line<NumericType>& b,
+                                    Vector2<NumericType>* p)
+{
+  // Lines should not be parallel.
+  const NumericType aDotb = Vector2Dot(a.dir, b.dir);
+  const NumericType parallelTest = Vector2LengthSq(a.dir) * Vector2LengthSq(b.dir);
+  const float diffParallelTest = static_cast<float>((aDotb * aDotb) - parallelTest);
+  if (fabs(diffParallelTest) < 1.0e-2f)
+  {
+    return false;
+  }
+  // Compute line intersection using determinants. Formula published on
+  // http://en.wikipedia.org/wiki/Line-line_intersection.
+  const Vector2<NumericType>& p_1 = a.p0;
+  const Vector2<NumericType> p_2 = a.p0 + a.dir;
+  const Vector2<NumericType>& p_3 = b.p0;
+  const Vector2<NumericType> p_4 = b.p0 + b.dir;
+  const NumericType det_p_1_p_2 = ((p_1.x * p_2.y) - (p_1.y * p_2.x));
+  const NumericType det_p_3_p_4 = ((p_3.x * p_4.y) - (p_3.y * p_4.x));
+  const NumericType denom = (((p_1.x - p_2.x) * (p_3.y - p_4.y)) -
+                             ((p_1.y - p_2.y) * (p_3.x - p_4.x)));
+  p->x = ((det_p_1_p_2 * (p_3.x - p_4.x)) - (det_p_3_p_4 * (p_1.x - p_2.x))) / denom;
+  p->y = ((det_p_1_p_2 * (p_3.y - p_4.y)) - (det_p_3_p_4 * (p_1.y - p_2.y))) / denom;
+  return true;
+}
 
 }
 using namespace geometry;

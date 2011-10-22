@@ -1,4 +1,6 @@
+#include "rand_bound_gtest.h"
 #include "geometry_gtest.h"
+#include "voronoi_core_gtest.h"
 #include "gtest/gtest.h"
 #ifdef WIN32
 #include <time.h>
