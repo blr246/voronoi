@@ -15,8 +15,13 @@ template <typename NumericType>
 struct GenericStone
 {
   typedef Vector2<NumericType> Position;
-  /// <summary> Color id indicating player that placed the stone. </summary>
-  int color;
+  GenericStone() : player(-1), pos() {}
+  GenericStone(const int player_, const Position& pos_)
+    : player(player_),
+      pos(pos_)
+  {}
+  /// <summary> Player id indicating player that placed the stone. </summary>
+  int player;
   /// <summary> The stone position. </summary>
   Position pos;
 };
@@ -87,14 +92,14 @@ private:
   {
     void Reset()
     {
-      lines.clear();
-      orthoLines.clear();
-      boundaries.clear();
+      candidateEdges.clear();
+      candidateEdgeNormals.clear();
+      edges.clear();
       vertices.clear();
     }
-    std::vector<Line<float> > lines;
-    std::vector<Line<float> > orthoLines;
-    std::vector<Line<float> > boundaries;
+    std::vector<Line<float> > candidateEdges;
+    std::vector<Line<float> > candidateEdgeNormals;
+    std::vector<Line<float> > edges;
     std::vector<Vector2<float> > vertices;
   };
 

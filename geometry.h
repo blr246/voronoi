@@ -1,5 +1,6 @@
 #ifndef _HPS_GEOMETRY_GEOMETRY_H_
 #define _HPS_GEOMETRY_GEOMETRY_H_
+#include <assert.h>
 
 #ifdef _MSC_VER
 #pragma warning(push)
@@ -111,6 +112,7 @@ struct Segment
   Vector2<NumericType> p1;
 };
 
+/// <summary> A segment defined by two points with direction. </summary>
 template <typename NumericType>
 struct DirectedSegment
 {
@@ -123,6 +125,7 @@ struct DirectedSegment
   Vector2<NumericType> p1;
 };
 
+/// <summary> A line given by point and direction. </summary>
 template <typename NumericType>
 struct Line
 {
@@ -135,6 +138,7 @@ struct Line
   Vector2<NumericType> dir;
 };
 
+/// <summary> An in-plane box without rotational transformation. </summary>
 template <typename NumericType>
 struct AxisAlignedBox
 {
@@ -142,7 +146,10 @@ struct AxisAlignedBox
   AxisAlignedBox(const Vector2<NumericType>& mins_, const Vector2<NumericType>& maxs_)
     : mins(mins_),
       maxs(maxs_)
-  {}
+  {
+    assert(maxs.x >= mins.x);
+    assert(maxs.y >= mins.y);
+  }
   Vector2<NumericType> mins;
   Vector2<NumericType> maxs;
 };
@@ -195,8 +202,8 @@ inline bool LineIntersectLineUnique(const Line<NumericType>& a,
   {
     return false;
   }
-  // Compute line intersection using determinants. Formula published on
-  // http://en.wikipedia.org/wiki/Line-line_intersection.
+  // reissb -- 20111022 -- Compute line intersection using determinants.
+  //   Formula published on http://en.wikipedia.org/wiki/Line-line_intersection.
   const Vector2<NumericType>& p_1 = a.p0;
   const Vector2<NumericType> p_2 = a.p0 + a.dir;
   const Vector2<NumericType>& p_3 = b.p0;
@@ -208,6 +215,13 @@ inline bool LineIntersectLineUnique(const Line<NumericType>& a,
   p->x = ((det_p_1_p_2 * (p_3.x - p_4.x)) - (det_p_3_p_4 * (p_1.x - p_2.x))) / denom;
   p->y = ((det_p_1_p_2 * (p_3.y - p_4.y)) - (det_p_3_p_4 * (p_1.y - p_2.y))) / denom;
   return true;
+}
+
+template <typename NumericType>
+inline NumericType AxisAlignedBoxArea(const AxisAlignedBox<NumericType>& box)
+{
+  const Vector2<NumericType> dims = box.maxs - box.mins;
+  return dims.x * dims.y;
 }
 
 }

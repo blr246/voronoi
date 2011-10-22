@@ -1,6 +1,5 @@
 cmake_minimum_required(VERSION 2.8)
-ENABLE_LANGUAGE(C)
-ENABLE_LANGUAGE(CXX)
+
 file(GLOB HEADERS "*.h")
 
 find_package(OpenMP REQUIRED)
@@ -49,5 +48,4 @@ if(HPS_GTEST_ENABLED)
   add_test(voronoi_gtest voronoi_gtest)
 endif(HPS_GTEST_ENABLED)
 
-project(voronoi)
-
+project(voronoi_all)
