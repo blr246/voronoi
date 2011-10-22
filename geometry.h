@@ -7,6 +7,8 @@
 #pragma warning(disable: 4201) // nameless struct/union
 #endif
 
+#include <math.h>
+
 namespace hps
 {
 namespace geometry

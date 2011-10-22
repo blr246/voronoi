@@ -83,6 +83,11 @@ public:
     return m_stonesPerPlayer;
   }
 
+  inline BoardSize GetBoardSize() const
+  {
+    return m_board.maxs;
+  }
+
 private:
   /// <summary> A stone in normalized coordinates. </summary>
   typedef detail::GenericStone<float> StoneNormalized;
