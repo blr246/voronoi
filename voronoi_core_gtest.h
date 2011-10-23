@@ -82,6 +82,30 @@ TEST(VoronoiScore, voronoi_core)
       EXPECT_NEAR(scores[0], expectScore, 1.0f);
       EXPECT_NEAR(scores[1], expectScore, 1.0f);
     }
+    // (0, 0) & (0, BoardDim)
+    {
+      Voronoi game(Players, StonesPerPlayer, Voronoi::BoardSize(BoardDim, BoardDim));
+      // Play two corner stones.
+      game.Play(Stone(0, Stone::Position(0, 0)));
+      game.Play(Stone(1, Stone::Position(0, BoardDim)));
+      // Verify scoring.
+      Voronoi::ScoreList scores;
+      game.Scores(&scores);
+      EXPECT_NEAR(scores[0], expectScore, 1.0f);
+      EXPECT_NEAR(scores[1], expectScore, 1.0f);
+    }
+    // (BoardDim, 0) & (BoardDim, BoardDim)
+    {
+      Voronoi game(Players, StonesPerPlayer, Voronoi::BoardSize(BoardDim, BoardDim));
+      // Play two corner stones.
+      game.Play(Stone(0, Stone::Position(BoardDim, 0)));
+      game.Play(Stone(1, Stone::Position(BoardDim, BoardDim)));
+      // Verify scoring.
+      Voronoi::ScoreList scores;
+      game.Scores(&scores);
+      EXPECT_NEAR(scores[0], expectScore, 1.0f);
+      EXPECT_NEAR(scores[1], expectScore, 1.0f);
+    }
   }
 }
 

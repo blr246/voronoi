@@ -57,6 +57,7 @@ namespace detail
 /// <summary> Comparison function for two unit vectors. </summary>
 /// <remarks>
 ///   <para> Sort unit vectors by angle measured from the x-axis. </summary>
+///   <para> This is a strict weak ordering. </summary>
 /// </remarks>
 struct UnitVectorFastAngleSort
 {
@@ -81,21 +82,34 @@ struct UnitVectorFastAngleSort
       {
         ++onX[0];
         // This is the reference axis so it comes first.
-        // Arbirary if both reference.
         if (v0.x > 0)
         {
-          return true;
+          // Is the other reference?
+          if (0 == v1.y)
+          {
+            // Use x-then-y keys to enforce strict weak ordering.
+            return (v0.x > v1.x) || (v0.y > v1.y);
+          }
+          else
+          {
+            return true;
+          }
         }
       }
       // Second on x-axis?
       if (0 == v1.y)
       {
         ++onX[1];
-        // This is the reference axis or both are not reference.
-        // Arbitrary when both are not reference.
-        if ((v1.x > 0) || (1 == onX[0]))
+        // This is the reference axis.
+        if (v1.x > 0)
         {
           return false;
+        }
+        // Both are not reference.
+        else if (1 == onX[0])
+        {
+          // Use x-then-y keys to enforce strict weak ordering.
+          return (v0.x > v1.x) || (v0.y > v1.y);
         }
       }
       // First not the reference on x-axis?
@@ -133,6 +147,15 @@ struct LineFastAngleSort
   {
     static UnitVectorFastAngleSort s_fastAngleSort;
     return s_fastAngleSort(a.dir, b.dir);
+  }
+};
+
+///// <summary> Helper to find lines with the same direction. </summary>
+struct LineDirEqual
+{
+  inline bool operator()(const Line<float>& a, const Line<float>& b) const
+  {
+    return (a.dir == b.dir);
   }
 };
 }
@@ -197,7 +220,7 @@ void Voronoi::Scores(ScoreList* scores) const
     {
       // Bottom.
       {
-        const Vector2<float> boundaryPt(s_i->pos.x, 0.0f);
+        const Vector2<float> boundaryPt(s_i->pos.x, 0);
         const Vector2<float> dir(0.0f, -1.0f);
         candidateEdgeNormals.push_back(Line<float>(boundaryPt, dir));
         candidateEdges.push_back(Line<float>(boundaryPt, Vector2Rotate90(dir)));
@@ -228,11 +251,44 @@ void Voronoi::Scores(ScoreList* scores) const
     //   worry about the sorting producing out-of-order edges.
     // Sort the boundaries.
     std::sort(candidateEdges.begin(), candidateEdges.end(), detail::LineFastAngleSort());
+    // Eliminate edges that have the same direction as existing edges. Keep only
+    // the closest edge.
+    {
+      typedef std::vector<Line<float> >::const_iterator EdgeIterator;
+      for (;;)
+      {
+        // Find next edge with sime direction.
+        EdgeIterator edgeSameDir = std::adjacent_find(candidateEdges.begin(),
+                                                      candidateEdges.end(),
+                                                      detail::LineDirEqual());
+        if (edgeSameDir == candidateEdges.end())
+        {
+          break;
+        }
+        else
+        {
+          // Retain edges and advance pointer.
+          const EdgeIterator edgeA = edgeSameDir;
+          const EdgeIterator edgeB = ++edgeSameDir;
+          // Keep the closer one.
+          const float distA = Vector2LengthSq(edgeA->p0 - s_i->pos);
+          const float distB = Vector2LengthSq(edgeB->p0 - s_i->pos);
+          if (distA < distB)
+          {
+            candidateEdges.erase(edgeB);
+          }
+          else
+          {
+            candidateEdges.erase(edgeA);
+          }
+        }
+      }
+    }
     // Find intersection of all consecutive boundaries to get polygon points.
     {
-      typedef std::vector<Line<float> >::const_iterator LineIterator;
-      LineIterator l0 = candidateEdges.begin();
-      LineIterator l1 = candidateEdges.begin() + 1;
+      typedef std::vector<Line<float> >::const_iterator EdgeIterator;
+      EdgeIterator l0 = candidateEdges.begin();
+      EdgeIterator l1 = candidateEdges.begin() + 1;
       for (; l1 != candidateEdges.end(); ++l0, ++l1)
       {
         Vector2<float> vertex;
