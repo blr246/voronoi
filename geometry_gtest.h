@@ -220,7 +220,7 @@ struct LineIntersectLineTest
       for (int iteration = 0; iteration < Iterations; ++iteration)
       {
         // Get a random intersection point.
-        const Vector2<float> intersectPt = MaxCoord * Vector2RandUniform();
+        const Vector2<float> intersectPt = (float) MaxCoord * Vector2RandUniform();
         // Get two random directions.
         const Vector2<float> dir_a = Vector2RandUniform();
         const Vector2<float> dir_a_norm = dir_a * (1.0f / Vector2Length(dir_a));
@@ -254,7 +254,7 @@ struct LineIntersectLineTest
       for (int iteration = 0; iteration < Iterations; ++iteration)
       {
         // Get a random intersection point.
-        const Vector2<float> intersectPt = MaxCoord * Vector2RandUniform();
+        const Vector2<float> intersectPt = (float) MaxCoord * Vector2RandUniform();
         // Get two random directions that are nearly parallel;
         const Vector2<float> dir_a = Vector2RandUniform();
         const Vector2<float> dir_a_norm = dir_a * (1.0f / Vector2Length(dir_a));
