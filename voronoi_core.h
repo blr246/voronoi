@@ -42,6 +42,8 @@ public:
   typedef std::vector<float> ScoreList;
   /// <summary> A list of stones in play order. </summary>
   typedef std::vector<Stone> StoneList;
+  /// <summary> A stone in normalized coordinates. </summary>
+  typedef detail::GenericStone<float> StoneNormalized;
 
   /// <summary> Create a Voronoi game. </summary>
   Voronoi(const int players, const int stonesPerPlayer,
@@ -89,9 +91,6 @@ public:
   }
 
 private:
-  /// <summary> A stone in normalized coordinates. </summary>
-  typedef detail::GenericStone<float> StoneNormalized;
-
   /// <summary> Data needed to score the game. </summary>
   struct ScoreData
   {

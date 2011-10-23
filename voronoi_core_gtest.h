@@ -107,6 +107,41 @@ TEST(VoronoiScore, voronoi_core)
       EXPECT_NEAR(scores[1], expectScore, 1.0f);
     }
   }
+  // Four points quadrants.
+  {
+    const float expectScore = 0.5f * static_cast<float>(BoardDim * BoardDim);
+    Voronoi game(Players, StonesPerPlayer, Voronoi::BoardSize(BoardDim, BoardDim));
+    // Play two corner stones.
+    const int quaterDim = BoardDim / 4;
+    game.Play(Stone(0, Stone::Position(quaterDim, quaterDim)));
+    game.Play(Stone(1, Stone::Position(3 * quaterDim, quaterDim)));
+    game.Play(Stone(0, Stone::Position(3 * quaterDim,  3 * quaterDim)));
+    game.Play(Stone(1, Stone::Position(quaterDim,  3 * quaterDim)));
+    // Verify scoring.
+    Voronoi::ScoreList scores;
+    game.Scores(&scores);
+    EXPECT_NEAR(scores[0], expectScore, 1.0f);
+    EXPECT_NEAR(scores[1], expectScore, 1.0f);
+  }
+  // Four points diagonal.
+  {
+    const float expectScore = 0.5f * static_cast<float>(BoardDim * BoardDim);
+    Voronoi game(Players, StonesPerPlayer, Voronoi::BoardSize(BoardDim, BoardDim));
+    // Play two corner stones.
+    const int eighthDim = BoardDim / 8;
+    game.Play(Stone(0, Stone::Position(eighthDim, eighthDim)));
+    game.Play(Stone(1, Stone::Position(BoardDim - eighthDim, BoardDim - eighthDim)));
+    game.Play(Stone(0, Stone::Position(2 * eighthDim, 2 * eighthDim)));
+    game.Play(Stone(1, Stone::Position(BoardDim - (2 * eighthDim), BoardDim - (2 * eighthDim))));
+    // Verify scoring.
+    Voronoi::ScoreList scores;
+    game.Scores(&scores);
+    EXPECT_NEAR(scores[0], expectScore, 1.0f);
+    EXPECT_NEAR(scores[1], expectScore, 1.0f);
+  }
+  // Difficult case since not all edges are actually boundaries.
+  {
+  }
 }
 
 }

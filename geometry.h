@@ -226,6 +226,14 @@ inline NumericType AxisAlignedBoxArea(const AxisAlignedBox<NumericType>& box)
   return dims.x * dims.y;
 }
 
+template <typename NumericType>
+inline NumericType AxisAlignedBoxContains(const AxisAlignedBox<NumericType>& box,
+                                          const Vector2<NumericType>& p)
+{
+  return (p.x >= box.mins.x) && (p.x <= box.maxs.x) &&
+         (p.y >= box.mins.y) && (p.y <= box.maxs.y);
+}
+
 }
 using namespace geometry;
 }
