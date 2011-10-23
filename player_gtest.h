@@ -25,6 +25,30 @@ TEST(RandomPlayer, Play)
   EXPECT_EQ(2, game.Played().size());
 }
 
+TEST(GreedyPlayer, TileCenters)
+{
+  
+  enum { Players = 2, };
+  enum { StonesPerPlayer = 10, };
+  enum { BoardDim = 1000, };
+
+  Voronoi game(Players, StonesPerPlayer, Voronoi::BoardSize(BoardDim, BoardDim));
+
+  std::vector<Position> centers;
+  GreedyPlayer::TileCenters(game, 1, &centers);
+
+  ASSERT_EQ(centers.size(), pow(1, 2));
+  EXPECT_EQ(centers[0].x, BoardDim/2);
+  EXPECT_EQ(centers[0].y, BoardDim/2);
+
+  centers.clear();
+  GreedyPlayer::TileCenters(game, 4, &centers);
+
+  ASSERT_EQ(centers.size(), pow(4, 2));
+  EXPECT_EQ(centers[0].x, 125);
+  EXPECT_EQ(centers[0].y, 125);
+}
+
 }
 
 #endif //_HPS_VORONOI_PLAYER_H_
