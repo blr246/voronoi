@@ -3,6 +3,7 @@
 #include "player.h"
 #include "voronoi_core.h"
 #include "gtest/gtest.h"
+#include <math.h>
 
 namespace _hps_voronoi_player_gtest_h_
 {
@@ -37,14 +38,14 @@ TEST(GreedyPlayer, TileCenters)
   std::vector<Position> centers;
   GreedyPlayer::TileCenters(game, 1, &centers);
 
-  ASSERT_EQ(centers.size(), pow(1, 2));
+  ASSERT_EQ(static_cast<float>(centers.size()), pow(1.0f, 2.0f));
   EXPECT_EQ(centers[0].x, BoardDim/2);
   EXPECT_EQ(centers[0].y, BoardDim/2);
 
   centers.clear();
   GreedyPlayer::TileCenters(game, 4, &centers);
 
-  ASSERT_EQ(centers.size(), pow(4, 2));
+  ASSERT_EQ(static_cast<float>(centers.size()), pow(4.0f, 2.0f));
   EXPECT_EQ(centers[0].x, 125);
   EXPECT_EQ(centers[0].y, 125);
 }

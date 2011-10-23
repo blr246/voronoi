@@ -555,41 +555,5 @@ void Voronoi::Scores(ScoreList* scores) const
   }
 }
 
-//    // Find closest point to stone on edges. If it matches a the edge point,
-//    // then the line is a boundary.
-//    typedef std::vector<Line<float> >::const_iterator LineIterator;
-//    for (LineIterator edgeNormal = candidateEdgeNormals.begin();
-//         edgeNormal != candidateEdgeNormals.end();
-//         ++edgeNormal)
-//    {
-//      // Intersect with all other lines to find closest.
-//      const Line<float>* closestEdge = NULL;
-//      float closestEdgeDist = std::numeric_limits<float>::infinity();
-//      for (LineIterator edge = candidateEdges.begin();
-//           edge != candidateEdges.end();
-//           ++edge)
-//      {
-//        Vector2<float> isect;
-//#if NDEBUG
-//        LineIntersectLineUnique(*edge, *edgeNormal, &isect);
-//#else
-//        const bool isectRes = LineIntersectLineUnique(*edge, *edgeNormal, &isect);
-//        assert(isectRes);
-//#endif
-//        Vector2<float> stoneToLine(isect - s_i->pos);
-//        const float edgeDist = Vector2Length(stoneToLine);
-//        if (edgeDist < closestEdgeDist)
-//        {
-//          closestEdgeDist = edgeDist;
-//          closestEdge = &*edge;
-//        }
-//      }
-//      // See if we found an edge for stone s_i.
-//      if (edgeNormal->p0 == closestEdge->p0)
-//      {
-//        edges.push_back(*closestEdge);
-//      }
-//    }
-
 }
 }
