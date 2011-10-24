@@ -200,7 +200,7 @@ inline bool LineIntersectLineUnique(const Line<NumericType>& a,
   const NumericType aDotb = Vector2Dot(a.dir, b.dir);
   const NumericType parallelTest = Vector2LengthSq(a.dir) * Vector2LengthSq(b.dir);
   const float diffParallelTest = static_cast<float>((aDotb * aDotb) - parallelTest);
-  if (fabs(diffParallelTest) < 1.0e-2f)
+  if (fabs(diffParallelTest) < 1.0e-4f)
   {
     return false;
   }

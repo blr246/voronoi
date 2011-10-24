@@ -8,6 +8,8 @@ namespace _hps_voronoi_voronoi_core_gtest_h_
 {
 using namespace hps;
 
+typedef Voronoi::FloatType FloatType;
+
 TEST(Stone, voronoi_core)
 {
   Stone stone(0, Stone::Position(0, 5));
@@ -32,7 +34,8 @@ TEST(Voronoi, voronoi_core)
   game.Scores(&scores);
   EXPECT_EQ(Players, scores.size());
   {
-    const float totalScore = std::accumulate(scores.begin(), scores.end(), 0.0f);
+    const FloatType totalScore = std::accumulate(scores.begin(), scores.end(),
+                                                 static_cast<FloatType>(0));
     EXPECT_EQ(0.0, totalScore);
   }
 }
@@ -52,12 +55,12 @@ TEST(VoronoiScore, voronoi_core)
     // Verify scoring.
     Voronoi::ScoreList scores;
     game.Scores(&scores);
-    const float expectScore = static_cast<float>(BoardDim * BoardDim);
+    const FloatType expectScore = static_cast<FloatType>(BoardDim * BoardDim);
     EXPECT_EQ(scores.front(), expectScore);
   }
   // Corner combinations.
   {
-    const float expectScore = 0.5f * static_cast<float>(BoardDim * BoardDim);
+    const FloatType expectScore = 0.5f * static_cast<FloatType>(BoardDim * BoardDim);
     // (0, 0) & (BoardDim, BoardDim)
     {
       Voronoi game(Players, StonesPerPlayer, Voronoi::BoardSize(BoardDim, BoardDim));
@@ -109,7 +112,7 @@ TEST(VoronoiScore, voronoi_core)
   }
   // Four points quadrants.
   {
-    const float expectScore = 0.5f * static_cast<float>(BoardDim * BoardDim);
+    const FloatType expectScore = 0.5f * static_cast<FloatType>(BoardDim * BoardDim);
     Voronoi game(Players, StonesPerPlayer, Voronoi::BoardSize(BoardDim, BoardDim));
     // Play two corner stones.
     const int quaterDim = BoardDim / 4;
@@ -125,7 +128,7 @@ TEST(VoronoiScore, voronoi_core)
   }
   // Four points diagonal.
   {
-    const float expectScore = 0.5f * static_cast<float>(BoardDim * BoardDim);
+    const FloatType expectScore = 0.5f * static_cast<FloatType>(BoardDim * BoardDim);
     Voronoi game(Players, StonesPerPlayer, Voronoi::BoardSize(BoardDim, BoardDim));
     // Play two corner stones.
     const int eighthDim = BoardDim / 8;
@@ -139,8 +142,34 @@ TEST(VoronoiScore, voronoi_core)
     EXPECT_NEAR(scores[0], expectScore, 1.0f);
     EXPECT_NEAR(scores[1], expectScore, 1.0f);
   }
-  // Difficult case since not all edges are actually boundaries.
+  // Random cases. Make sure that the area sums to the expected total.
   {
+    enum { RandomIterations3Stones = 500, };
+    const FloatType expectTotalScore = static_cast<FloatType>(BoardDim * BoardDim);
+    for (int iteration = 0; iteration < RandomIterations3Stones; ++iteration)
+    {
+      if (11 == iteration)
+      {
+        bool fix = true;
+      }
+      enum { Plays = 3, };
+      Voronoi game(Players, StonesPerPlayer, Voronoi::BoardSize(BoardDim, BoardDim));
+      // Play random stones.
+      for (int playIdx = 0; playIdx < Plays; ++playIdx)
+      {
+        const int player = playIdx % Players;
+        game.Play(Stone(player, Stone::Position(RandBound(BoardDim + 1),
+                                                RandBound(BoardDim + 1))));
+      }
+      // Verify scoring.
+      Voronoi::ScoreList scores;
+      game.Scores(&scores);
+      const FloatType totalScore = std::accumulate(scores.begin(), scores.end(),
+                                                   static_cast<FloatType>(0));
+      EXPECT_NEAR(expectTotalScore, totalScore, 1.0f)
+        << "Scores did not sum properly on iteration " << iteration << " of "
+        << RandomIterations3Stones << ".";
+    }
   }
 }
 

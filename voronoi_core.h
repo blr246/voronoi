@@ -34,27 +34,22 @@ typedef detail::GenericStone<int> Stone;
 class Voronoi
 {
 public:
+  /// <summary> Control the precision of the Voronoi game. </summary>
+  typedef float FloatType;
   /// <summary> A Voronoi game board size. </summary>
   typedef Vector2<int> BoardSize;
   /// <summary> A Voronoi game board. </summary>
   typedef AxisAlignedBox<int> Board;
   /// <summary> A list of player scores. </summary>
-  typedef std::vector<float> ScoreList;
+  typedef std::vector<FloatType> ScoreList;
   /// <summary> A list of stones in play order. </summary>
   typedef std::vector<Stone> StoneList;
   /// <summary> A stone in normalized coordinates. </summary>
-  typedef detail::GenericStone<float> StoneNormalized;
+  typedef detail::GenericStone<FloatType> StoneNormalized;
 
   /// <summary> Create a Voronoi game. </summary>
   Voronoi(const int players, const int stonesPerPlayer,
-          const BoardSize& boardSize)
-    : m_players(players),
-      m_stonesPerPlayer(stonesPerPlayer),
-      m_stonesPlayed(),
-      m_stonesPlayedNorm(),
-      m_board(Vector2<int>(0, 0), Vector2<int>(boardSize.x, boardSize.y)),
-      m_scoreData()
-  {}
+          const BoardSize& boardSize);
 
   /// <summary> Play a single stone. </summary>
   /// <remarks>
@@ -94,17 +89,16 @@ private:
   /// <summary> Data needed to score the game. </summary>
   struct ScoreData
   {
-    void Reset()
+    ScoreData(const int players);
+    inline void Reset()
     {
       candidateEdges.clear();
-      candidateEdgeNormals.clear();
-      edges.clear();
       vertices.clear();
+      assert(4 == boardEdges.size());
     }
-    std::vector<Line<float> > candidateEdges;
-    std::vector<Line<float> > candidateEdgeNormals;
-    std::vector<Line<float> > edges;
-    std::vector<Vector2<float> > vertices;
+    std::vector<Line<FloatType> > candidateEdges;
+    std::vector<Line<FloatType> > boardEdges;
+    std::vector<Vector2<FloatType> > vertices;
   };
 
   /// <summary> Number of players. </summary>

@@ -13,7 +13,11 @@
 
 int main(int argc, char** argv)
 {
-  srand(static_cast<unsigned int>(time(NULL)));
+  //const unsigned int randSeed = static_cast<unsigned int>(time(NULL));
+  //const unsigned int randSeed = 1319414691;
+  const unsigned int randSeed = 1319433120;
+  std::cout << "Random seed: " << randSeed << "." << std::endl;
+  srand(randSeed);
   testing::InitGoogleTest(&argc, argv);
   testing::FLAGS_gtest_catch_exceptions = false;
   return RUN_ALL_TESTS();
