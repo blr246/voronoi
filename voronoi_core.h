@@ -46,6 +46,8 @@ public:
   typedef std::vector<Stone> StoneList;
   /// <summary> A stone in normalized coordinates. </summary>
   typedef detail::GenericStone<FloatType> StoneNormalized;
+  /// <summary> A list of stones with normalized coordinates. </summary>
+  typedef std::vector<StoneNormalized> StoneNormalizedList;
 
   /// <summary> Create a Voronoi game. </summary>
   Voronoi(const int players, const int stonesPerPlayer,
@@ -108,7 +110,7 @@ private:
   /// <summary> Stones played so far. </summary>
   StoneList m_stonesPlayed;
   /// <summary> Stones played so far in normalized coordinates. </summary>
-  std::vector<StoneNormalized> m_stonesPlayedNorm;
+  StoneNormalizedList m_stonesPlayedNorm;
   /// <summary> The game play area in world coordinates. </summary>
   Board m_board;
   /// <summary> Internal memory used to compute scores. </summary>
