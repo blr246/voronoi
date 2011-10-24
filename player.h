@@ -74,10 +74,12 @@ struct GreedyPlayer{
   static void UnplayedTiles(const Voronoi& game, const int tilesPerSide, std::vector<Tile> *tiles)
   {
     Tiles(game, tilesPerSide, tiles);
-    Voronoi::BoardSize boardSize = game.GetBoardSize();
+    RemovePlayedTiles(game, tiles);
+  }
+
+  static void RemovePlayedTiles(const Voronoi& game, std::vector<Tile> *tiles)
+  {
     Voronoi::StoneList playedStones = game.Played();
-    int xRadius = boardSize.x/(tilesPerSide*2);
-    int yRadius = boardSize.y/(tilesPerSide*2);
     
     for(unsigned int i = 0; i < tiles->size(); i++)
     {
@@ -93,8 +95,8 @@ struct GreedyPlayer{
         }
       }
     }
-    
   }
+
 };
 
 }
