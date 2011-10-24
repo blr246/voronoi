@@ -26,7 +26,7 @@ TEST(RandomPlayer, Play)
   EXPECT_EQ(2, game.Played().size());
 }
 
-TEST(GreedyPlayer, TileCenters)
+TEST(GreedyPlayer, Tiles)
 {
   
   enum { Players = 2, };
@@ -48,6 +48,29 @@ TEST(GreedyPlayer, TileCenters)
   ASSERT_EQ(static_cast<float>(tiles.size()), pow(4.0f, 2.0f));
   EXPECT_EQ(tiles[0].center.x, 125);
   EXPECT_EQ(tiles[0].center.y, 125);
+}
+
+TEST(GreedyPlayer, UnplayedTiles)
+{
+  
+  enum { Players = 2, };
+  enum { StonesPerPlayer = 10, };
+  enum { BoardDim = 1000, };
+
+  Voronoi game(Players, StonesPerPlayer, Voronoi::BoardSize(BoardDim, BoardDim));
+
+  std::vector<Tile> tiles;
+  GreedyPlayer::UnplayedTiles(game, 4, &tiles);
+
+  int startingSize = tiles.size();
+  ASSERT_EQ(static_cast<float>(startingSize), pow(4.0f, 2.0f));
+
+  RandomPlayer::Play(game);
+
+  tiles.clear();
+  GreedyPlayer::UnplayedTiles(game, 4, &tiles);
+
+  ASSERT_EQ(startingSize-1, tiles.size());
 }
 
 TEST(Tile, PositionIsWithin)

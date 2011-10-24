@@ -71,7 +71,7 @@ struct GreedyPlayer{
     }
   }
 
-  static void UnplayedTileCenters(const Voronoi& game, const int tilesPerSide, std::vector<Tile> *tiles)
+  static void UnplayedTiles(const Voronoi& game, const int tilesPerSide, std::vector<Tile> *tiles)
   {
     Tiles(game, tilesPerSide, tiles);
     Voronoi::BoardSize boardSize = game.GetBoardSize();
@@ -87,7 +87,9 @@ struct GreedyPlayer{
         Position p = playedStones[j].pos;
         if(c.PositionIsWithin(p))
         {
-          //Remove tile from tile list;
+          tiles->erase(tiles->begin() + i); //Remove tile from tile list;
+          i--;
+          break;
         }
       }
     }
