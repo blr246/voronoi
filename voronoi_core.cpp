@@ -337,7 +337,7 @@ void Voronoi::Scores(ScoreList* scores) const
     // Eliminate edges that have the same direction as existing edges. Keep only
     // the closest edge.
     {
-      typedef std::vector<Line<float> >::const_iterator EdgeIterator;
+      typedef std::vector<Line<float> >::iterator EdgeIterator;
       for (;;)
       {
         // Find next edge with sime direction.
