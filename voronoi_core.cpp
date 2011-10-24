@@ -1,6 +1,7 @@
 #include "voronoi_core.h"
 #include <algorithm>
 #include <limits>
+#include <numeric>
 #include <assert.h>
 
 // For Python debugging.
@@ -294,11 +295,15 @@ void Voronoi::Scores(ScoreList* scores) const
 {
   // Initialize scores.
   scores->assign(m_players, 0);
-  // One stone is a special case. No combinations.
   const FloatType boardTotalArea = static_cast<FloatType>(AxisAlignedBoxArea(m_board));
-  if (1 == m_stonesPlayed.size())
+  // Return on base cases.
+  if (m_stonesPlayed.size() <= 1)
   {
-    scores->at(0) = boardTotalArea;
+    // One stone is a special case. No combinations.
+    if (1 == m_stonesPlayed.size())
+    {
+      scores->at(0) = boardTotalArea;
+    }
     return;
   }
 
@@ -326,6 +331,8 @@ void Voronoi::Scores(ScoreList* scores) const
   std::vector<Vector2<FloatType> >& vertices = m_scoreData.vertices;
   typedef std::vector<StoneNormalized>::const_iterator StoneIterator;
   for (StoneIterator s_i = m_stonesPlayedNorm.begin();
+//       s_i != m_stonesPlayedNorm.end() - 1; // reissb -- 20111023 -- Cannot use this optimization
+//                                            //   until the scoring is verified correct
        s_i != m_stonesPlayedNorm.end();
        ++s_i)
   {
@@ -489,7 +496,7 @@ void Voronoi::Scores(ScoreList* scores) const
                   }
                 }
               }
-              if (tossLastVertex)
+              if (tossLastVertex && (vertices.size() > 0))
               {
                 vertices.pop_back();
                 --maxEdgeIdx;
@@ -535,6 +542,26 @@ void Voronoi::Scores(ScoreList* scores) const
           // Need to try a wall.
           else
           {
+            if (Vector2Dot(a.dir, b.dir) > 0.99f)
+            {
+              const FloatType distSqA = Vector2LengthSq(a.p0 - s_i->pos);
+              const FloatType distSqB = Vector2LengthSq(b.p0 - s_i->pos);
+              if (distSqA < distSqB)
+              {
+                candidateEdges.erase(candidateEdges.begin() + edgeIdxNext);
+              }
+              else
+              {
+                candidateEdges.erase(candidateEdges.begin() + edgeFrontier);
+                if (vertices.size() > 0)
+                {
+                  --edgeFrontier;
+                  vertices.pop_back();
+                }
+              }
+              --maxEdgeIdx;
+              --edgeCount;
+            }
             tryWall = true;
           }
         }
@@ -643,6 +670,14 @@ void Voronoi::Scores(ScoreList* scores) const
     assert((s_i->player >= 0) && (s_i->player < static_cast<int>(scores->size())));
     scores->at(s_i->player) += normArea * boardTotalArea;
   }
+//  // reissb -- 20111023 -- This optimization cannot be used until the scoring is verified correct.
+//  // The remainder of the score goes to the last player to play a stone.
+//  const FloatType scoreTotal = std::accumulate(scores->begin(), scores->end(),
+//                                               static_cast<FloatType>(0));
+//  assert((scoreTotal > 0) && (scoreTotal < boardTotalArea));
+//  assert((m_stonesPlayed.back().player >= 0) &&
+//         (m_stonesPlayed.back().player < static_cast<int>(scores->size())));
+//  scores->at(m_stonesPlayed.back().player) += boardTotalArea - scoreTotal;
 }
 
 Voronoi::ScoreData::ScoreData(const int players)
