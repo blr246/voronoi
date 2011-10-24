@@ -97,6 +97,18 @@ struct GreedyPlayer{
     }
   }
 
+  static float GameScore(const Voronoi& game)
+  {
+    Voronoi::StoneList playedStones= game.Played();
+    int lastPlayer = playedStones.back().player;
+    Voronoi::ScoreList scores;
+    game.Scores(scores);
+
+    // This is where a greedy heuristic goes, we want score plus some notion of defensibility,
+    // Defensibility should correspond to how many polygons you own or how spread out your area is.
+    return scores[lastPlayer]; 
+  }
+
 };
 
 }
