@@ -3,6 +3,7 @@
 
 #include "voronoi_core.h"
 #include <vector>
+#include <algorithm>
 
 namespace hps
 {
@@ -29,10 +30,33 @@ struct RandomPlayer{
   }
 };
 
-struct GreedyPlayer{
-  static void TileCenters(const Voronoi& game, const int tilesPerSide, std::vector<Position> *centers)
+struct Tile
+{
+  Tile(Position center_, int x, int y)
+    : center(center_),
+      XEdgeLength(x),
+      YEdgeLength(y)
+  {};
+
+  Position center;
+  int XEdgeLength;
+  int YEdgeLength;
+
+  const bool operator()(const Position pos){ PositionIsWithin(pos); } // For remove_if
+
+  const bool PositionIsWithin(const Position pos)
   {
-    assert(centers->size() == 0);
+    return (pos.x < center.x + XEdgeLength/2 && pos.x >= center.x - XEdgeLength/2 &&
+        pos.y < center.y + YEdgeLength/2 && pos.y >= center.y - YEdgeLength/2);
+  }
+
+};
+
+struct GreedyPlayer{
+  static void Tiles(const Voronoi& game, const int tilesPerSide, std::vector<Tile> *tiles)
+  {
+    assert(tiles->size() == 0);
+    assert(tilesPerSide > 0);
     Position boardSize = game.GetBoardSize();
 
     int xIncrement = boardSize.x/tilesPerSide;
@@ -42,11 +66,32 @@ struct GreedyPlayer{
     {
       for(int y = yIncrement/2; y < boardSize.y; y+= yIncrement)
       {
-        centers->push_back(Position(x, y));
+        tiles->push_back(Tile(Position(x, y),xIncrement, yIncrement));
+      }
+    }
+  }
+
+  static void UnplayedTileCenters(const Voronoi& game, const int tilesPerSide, std::vector<Tile> *tiles)
+  {
+    Tiles(game, tilesPerSide, tiles);
+    Voronoi::BoardSize boardSize = game.GetBoardSize();
+    Voronoi::StoneList playedStones = game.Played();
+    int xRadius = boardSize.x/(tilesPerSide*2);
+    int yRadius = boardSize.y/(tilesPerSide*2);
+    
+    for(unsigned int i = 0; i < tiles->size(); i++)
+    {
+      Tile c = (*tiles)[i];
+      for(unsigned int j = 0; j < playedStones.size(); j++)
+      {
+        Position p = playedStones[j].pos;
+        if(c.PositionIsWithin(p))
+        {
+          //Remove tile from tile list;
+        }
       }
     }
     
-    return;
   }
 };
 

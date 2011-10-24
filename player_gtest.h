@@ -35,19 +35,33 @@ TEST(GreedyPlayer, TileCenters)
 
   Voronoi game(Players, StonesPerPlayer, Voronoi::BoardSize(BoardDim, BoardDim));
 
-  std::vector<Position> centers;
-  GreedyPlayer::TileCenters(game, 1, &centers);
+  std::vector<Tile> tiles;
+  GreedyPlayer::Tiles(game, 1, &tiles);
 
-  ASSERT_EQ(static_cast<float>(centers.size()), pow(1.0f, 2.0f));
-  EXPECT_EQ(centers[0].x, BoardDim/2);
-  EXPECT_EQ(centers[0].y, BoardDim/2);
+  ASSERT_EQ(static_cast<float>(tiles.size()), pow(1.0f, 2.0f));
+  EXPECT_EQ(tiles[0].center.x, BoardDim/2);
+  EXPECT_EQ(tiles[0].center.y, BoardDim/2);
 
-  centers.clear();
-  GreedyPlayer::TileCenters(game, 4, &centers);
+  tiles.clear();
+  GreedyPlayer::Tiles(game, 4, &tiles);
 
-  ASSERT_EQ(static_cast<float>(centers.size()), pow(4.0f, 2.0f));
-  EXPECT_EQ(centers[0].x, 125);
-  EXPECT_EQ(centers[0].y, 125);
+  ASSERT_EQ(static_cast<float>(tiles.size()), pow(4.0f, 2.0f));
+  EXPECT_EQ(tiles[0].center.x, 125);
+  EXPECT_EQ(tiles[0].center.y, 125);
+}
+
+TEST(Tile, PositionIsWithin)
+{
+  Tile one(Position(125, 125), 250, 250);
+
+  EXPECT_TRUE(one.PositionIsWithin(Position(0,0)));
+  EXPECT_TRUE(one.PositionIsWithin(Position(125,125)));
+  EXPECT_FALSE(one.PositionIsWithin(Position(250,250)));
+  EXPECT_FALSE(one.PositionIsWithin(Position(250,0)));
+  EXPECT_FALSE(one.PositionIsWithin(Position(0,250)));
+
+  Tile two(Position(375, 375), 250, 250);
+  EXPECT_TRUE(two.PositionIsWithin(Position(250, 250)));
 }
 
 }
