@@ -446,7 +446,7 @@ bool Voronoi::Scores(ScoreList* scores) const
       // TODO(reissb) -- 20111025 -- Just split the score evenly if I fail?
       assert((linkedSegmentCountBefore + 1) == static_cast<int>(linkedSegments.size()));
       typedef LinkedSegmentsQueue::const_iterator LinkedSegmentIter;
-      LinkedSegmentIter frontLink = linkedSegments.begin();
+      const Segment2<FloatType> frontLink = linkedSegments.front();
       typedef SegmentQueue::const_iterator EdgeIterator;
       bool linkExtended;
       do
@@ -458,11 +458,11 @@ bool Voronoi::Scores(ScoreList* scores) const
           Segment2<FloatType> segIns = **seg;
           // Check start link (segments have no direction).
           {
-            const bool insert     = Vector2NearlyEqual(segIns.p1, frontLink->p0, kVecEqSqBound);
-            const bool insertFlip = Vector2NearlyEqual(segIns.p0, frontLink->p0, kVecEqSqBound);
+            const bool insert     = Vector2NearlyEqual(segIns.p1, frontLink.p0, kVecEqSqBound);
+            const bool insertFlip = Vector2NearlyEqual(segIns.p0, frontLink.p0, kVecEqSqBound);
             if (insert || insertFlip)
             {
-              if (!Segment2NearlyEqual(segIns, *frontLink, kVecEqSqBound))
+              if (!Segment2NearlyEqual(segIns, frontLink, kVecEqSqBound))
               {
                 if (insertFlip)
                 {
