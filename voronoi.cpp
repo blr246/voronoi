@@ -9,22 +9,33 @@
 #include <iostream>
 #include <string>
 #include "util.h"
+#include "player.h"
+#include "voronoi_core.h"
 
 int g_num_turns;
 int g_num_players;
 int g_my_player;
+enum {BoardDim=1000,};
+
+std::string boardState;
+std::string boardStart;
+std::string boardEnd;
+
+hps::voronoi::Voronoi* game;
 
 void parseMessage( char buffer[1024] ) {
     
     /* Parsing the GLOBALS */
     sscanf( buffer, "GLOBALS\nTotal Turns: %d\nTotal Players: %d\nYou are Player: %d", 
             &g_num_turns, &g_num_players, &g_my_player );
+        
+    char* boardStateConst = "BOARD STATE";
+    char* boardStateBuffer = strstr(buffer,boardStateConst);
+    boardStateBuffer = boardStateBuffer + strlen(boardStateConst);
     
-    //char* buf = strstr(buffer,"BOARD STATE");
-    //buf = buf+strlen("BOARD STATE");
-    
-    
-    
+    boardState = std::string(boardStateBuffer);
+    boardEnd = "Enter New position \"X Y\":";
+    boardStart = "BOARD STATE";
 }
 
 
@@ -48,6 +59,12 @@ void writeSocket ( int sockfd, char buffer[1024] ) {
 
     //bzero(buffer,1024);
     memset( buffer, 0, sizeof(char)*1024);
+    
+    hps::voronoi::RandomPlayer::Play(*game);
+    
+    std::string move = game->Compute();
+    
+    buffer = const_cast<char*>(move.c_str());
     /* TODO: Place your new position here (e.g. "100 500" ) */
     fgets(buffer,1023,stdin);
     n = write(sockfd,buffer,strlen(buffer));
@@ -76,6 +93,18 @@ void readSocket ( int sockfd, char buffer[1024] ) {
     parseMessage( buffer );
     
     
+}
+
+void startGame()
+{
+    hps::voronoi::Vector2<int> v(BoardDim,BoardDim);
+    game = new hps::voronoi::Voronoi(g_num_players,g_num_turns,v);
+    
+    if(boardState.length() > 0)
+    {
+      game->InitBoard(boardState,boardStart,boardEnd);
+    }
+
 }
 
 int main(int argc, char *argv[])
@@ -113,12 +142,16 @@ int main(int argc, char *argv[])
     /* Read from socket */
     readSocket( sockfd, buffer );
 
+    startGame();
+    
     /* Write into socket */
     writeSocket( sockfd, buffer );
 
+    
     /* Now we know how many turns we have, let's repeat */
     for ( i = 1; i < g_num_turns; i++ ) {
         readSocket( sockfd, buffer );
+	startGame();
         writeSocket( sockfd, buffer );
     }
 
