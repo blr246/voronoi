@@ -64,10 +64,11 @@ void writeSocket ( int sockfd, char buffer[1024] ) {
     hps::voronoi::Player* player = new hps::voronoi::GreedyPlayer(*game,30);
     player->Play(*game);
     std::string move = game->Compute();
-    
+    //std::cout << "returned from player..." <<std::endl;
+    //std::cout << move << std::endl;
     buffer = const_cast<char*>(move.c_str());
     /* TODO: Place your new position here (e.g. "100 500" ) */
-    fgets(buffer,1023,stdin);
+    //fputs(buffer,1023,stdin);
     n = write(sockfd,buffer,strlen(buffer));
     if (n < 0) 
          error("ERROR writing to socket");

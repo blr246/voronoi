@@ -71,12 +71,14 @@ Voronoi::Voronoi(const int players, const int stonesPerPlayer,
 
 void Voronoi::InitBoard(std::string buffer, std::string start, std::string end)
 {
+  //std::cout << "Initializing Board..." << std::endl;
   m_stonesPlayed.clear();
   size_t prev = 0;
   size_t next = buffer.find_first_of("\n");
   buffer = buffer.substr(buffer.find(start)+start.length());
   while(next!=std::string::npos)
   {
+    //std::cout << "reading coordinates..." <<std::endl; 
     std::stringstream ss;
     int player;
     int x;
@@ -89,12 +91,13 @@ void Voronoi::InitBoard(std::string buffer, std::string start, std::string end)
       ss >> player >> sep >> x >> y;
       Vector2<int> pos(x,y); 
       Stone stone(player,pos);
-      std::cout << "player: " << player << ", x: " << x << ", y: " << y <<std::endl;
-      m_stonesPlayed.push_back(stone);
+      //std::cout << "player: " << player << ", x: " << x << ", y: " << y <<std::endl;
+      Play(stone);
     }
     prev = next+1;
     next = buffer.find_first_of("\n",next+1);
   }
+  //std::cout << "done initializing board..." <<std::endl;
 }
 
 bool Voronoi::Play(const Stone& stone)
