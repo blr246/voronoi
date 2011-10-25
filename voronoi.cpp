@@ -48,10 +48,10 @@ void error(const char *msg)
 /* Check for the end of the message (which is '":') */
 int isEndOfMessage( char buffer[1024] ) {
     if ( buffer[strlen(buffer)-2] == '\"' && 
-	buffer[strlen(buffer)-1] == ':' ) 
-	return 1;
+	         buffer[strlen(buffer)-1] == ':' ) 
+ 	    return 1;
     else
-	return 0;
+      return 0;
 }
 
 void writeSocket ( int sockfd, char buffer[1024] ) {
