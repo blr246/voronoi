@@ -52,8 +52,6 @@ struct GreedyPlayer: public Player
   void Play(Voronoi& game)
   {
     std::cout << "Greedy player playing..." << std::endl;
-    Tile::TileList::iterator bestTileIt;
-    float bestScore = 0;// -infinity?
     Stone stone;
     stone.player = game.CurrentPlayer();
 
@@ -77,10 +75,13 @@ struct GreedyPlayer: public Player
       Tile::RemovePlayedTiles(game, &tiles);
     }
 
-    for(Tile::TileList::iterator i = tiles.begin(); i < tiles.end(); i++)
+    int bestTileIt =-1;
+    float bestScore = std::numeric_limits<float>::min();
+
+    for(int i = 0; i< tiles.size(); i++)
     {
       //std::cout << ".";
-      stone.pos = i->center;
+      stone.pos = tiles.at(i).center;
       game.Play(stone);
       float curScore = GameScore(game);
       game.Undo();
@@ -90,11 +91,13 @@ struct GreedyPlayer: public Player
         bestScore = curScore;
       }
     }
+    assert(bestTileIt >=0);
+    assert(bestScore > 0);
     //std::cout << std::endl;
 
-    stone.pos = bestTileIt->center;
+    stone.pos = tiles.at(bestTileIt).center;
     game.Play(stone);
-    tiles.erase(bestTileIt); // Remove the played tile;
+    tiles.erase(tiles.begin()+bestTileIt); // Remove the played tile;
   }
 
   static float GameScore(const Voronoi& game)
