@@ -17,7 +17,10 @@ namespace voronoi
 {
 
 typedef Voronoi::FloatType FloatType;
-const FloatType kVecEqSqBound = static_cast<FloatType>(1.0e-3);
+const FloatType kInternalBoardScale = static_cast<FloatType>(10000);
+const FloatType kInternalBoardScaleInv = 1 / kInternalBoardScale;
+const FloatType kVecEqSqBound = static_cast<FloatType>(0.25) * kInternalBoardScale;
+
 namespace detail
 {
 /// <summary> Test that a stone has the same position as a base stone. </summary>
@@ -40,8 +43,8 @@ Voronoi::Voronoi(const int players, const int stonesPerPlayer,
   m_stonesPlayedNorm(),
   m_board(Vector2<int>(0, 0), Vector2<int>(boardSize.x, boardSize.y)),
   m_boardNorm(Vector2<FloatType>(0, 0),
-              Vector2<FloatType>(static_cast<FloatType>(boardSize.x),
-                                 static_cast<FloatType>(boardSize.y)))
+              Vector2<FloatType>(static_cast<FloatType>(boardSize.x * kInternalBoardScale),
+                                 static_cast<FloatType>(boardSize.y * kInternalBoardScale)))
 {}
 
 void Voronoi::InitBoard(std::string buffer, std::string start, std::string end)
@@ -88,13 +91,9 @@ bool Voronoi::Play(const Stone& stone)
   assert((stone.pos.x >= m_board.mins.x) && (stone.pos.y >= m_board.mins.y));
   assert((stone.pos.x <= m_board.maxs.x) && (stone.pos.y <= m_board.maxs.y));
   // Push the stone and the normalized stone.
-  const int invScaleX = 1;
-  const int invScaleY = 1;
-  //const int dx = m_board.maxs.x - m_board.mins.x;
-  //const int dy = m_board.maxs.y - m_board.mins.y;
   m_stonesPlayed.push_back(stone);
-  const StoneNormalized::Position posNorm(stone.pos.x / static_cast<FloatType>(invScaleX),
-                                          stone.pos.y / static_cast<FloatType>(invScaleY));
+  const StoneNormalized::Position posNorm(stone.pos.x * kInternalBoardScale,
+                                          stone.pos.y * kInternalBoardScale);
   m_stonesPlayedNorm.push_back(StoneNormalized(stone.player, posNorm));
   assert(m_stonesPlayed.size() == m_stonesPlayedNorm.size());
   return true;
@@ -300,7 +299,6 @@ struct SegmentAngleSort
   }
 };
 }
-
 
 bool Voronoi::FortuneScores(ScoreList* scores) const
 {
@@ -517,11 +515,11 @@ bool Voronoi::FortuneScores(ScoreList* scores) const
     // Create closed polygons.
     {
       typedef LinkedSegmentsQueue::iterator LinkedSegIter;
-      const Vector2<FloatType>* firstPt = &linkedSegments.front().p0;
+      const Vector2<FloatType> firstPt = linkedSegments.front().p0;
       LinkedSegIter curSeg = linkedSegments.begin();
       // Until the shape is closed...
       int wallsAdded = 0;
-      while (!Vector2NearlyEqual(curSeg->p1, *firstPt, kVecEqSqBound))
+      while (!Vector2NearlyEqual(curSeg->p1, firstPt, kVecEqSqBound))
       {
         // Do we need to use walls?
         const Vector2<FloatType>* lastPt = &curSeg->p1;
@@ -531,7 +529,7 @@ bool Voronoi::FortuneScores(ScoreList* scores) const
                                                !Vector2NearlyEqual(*lastPt, nextSeg->p0,
                                                                    kVecEqSqBound));
         const Vector2<FloatType> runAlongWallsToPt = (runAlongWalls && !outOfSegments) ?
-                                                     nextSeg->p0 : *firstPt;
+                                                     nextSeg->p0 : firstPt;
         if (runAlongWalls)
         {
           // Close the shape using the board edges.
@@ -577,10 +575,10 @@ bool Voronoi::FortuneScores(ScoreList* scores) const
         }
       }
     }
-//    if (!Vector2NearlyEqual(linkedSegments.back().p1, linkedSegments.front().p0, kVecEqSqBound))
-//    {
-//      return false;
-//    }
+    if (!Vector2NearlyEqual(linkedSegments.back().p1, linkedSegments.front().p0, kVecEqSqBound))
+    {
+      return false;
+    }
     // Gather the vertices and compute the area.
     FloatType normArea = 0;
     {
@@ -599,22 +597,40 @@ bool Voronoi::FortuneScores(ScoreList* scores) const
     }
     normArea *= static_cast<FloatType>(0.5);
     // Add this polygon to the player score.
-    scores->at(stoneIdx % m_players) += normArea;// * boardTotalArea;
+    static const FloatType kAreaScale = (kInternalBoardScaleInv * kInternalBoardScaleInv);
+    scores->at(stoneIdx % m_players) += normArea * kAreaScale;
   }
   return true;
 }
 
 bool Voronoi::Scores(ScoreList* scores) const
 {
-  bool FortuneScoringSucceeded = FortuneScores(scores);
-  if(FortuneScoringSucceeded){
-    return true;
-  }else
+  if(!FortuneScores(scores))
   {
     std::cout << "Scoring failed, falling back to naive scoring." << std::endl;
     NaiveScore(*this, scores);
   }
+  return true;
 }
+
+void NaiveScore(const Voronoi& game, Voronoi::ScoreList* scores)
+{
+  Voronoi::StoneList stones = game.Played();
+  Voronoi::Board board = game.GetBoard();
+  int tilesPerSide = 50;
+  Tile::TileList tileList;
+  Tile::Tiles(game, tilesPerSide,&tileList);
+  const int tileArea = tileList.front().XEdgeLength * tileList.front().YEdgeLength;
+  scores->assign(game.NumPlayers(), 0.0f);
+  ScoreNearestStone(stones, tileList, scores);
+  const float kScale = static_cast<float>(tileArea);
+  for(unsigned int i = 0; i < game.NumPlayers(); i++)
+  {
+    scores->at(i) *= kScale;
+  }
+}
+
+
 
 }
 }

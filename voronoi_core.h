@@ -257,23 +257,7 @@ static void ScoreNearestStone(const Voronoi::StoneList& stoneList, const std::ve
   }
 }
 
-
-static void NaiveScore(const Voronoi& game, Voronoi::ScoreList* scores)
-{
-  Voronoi::StoneList stones = game.Played();
-  Voronoi::Board board = game.GetBoard();
-  int tilesPerSide = 50;
-  Tile::TileList tileList;
-  Tile::Tiles(game, tilesPerSide,&tileList);
-  scores->clear();
-  for(unsigned int i = 0; i < game.NumPlayers(); i++)
-  {
-    scores->push_back(0.0f);
-  }
-
-  ScoreNearestStone(stones, tileList, scores);
-}
-
+void NaiveScore(const Voronoi& game, Voronoi::ScoreList* scores);
 
 }
 using namespace voronoi;

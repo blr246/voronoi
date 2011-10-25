@@ -209,6 +209,41 @@ TEST(VoronoiScore, voronoi_core)
     int scoreSuccessCount = 0;
     for (int iteration = 0; iteration < RandomIterations; ++iteration)
     {
+      enum { Plays = 10, };
+      Voronoi game(Players, StonesPerPlayer, Voronoi::BoardSize(BoardDim, BoardDim));
+      // Play random stones.
+      for (int playIdx = 0; playIdx < Plays; ++playIdx)
+      {
+        const int player = playIdx % Players;
+        while (!game.Play(Stone(player, Stone::Position(RandBound(BoardDim + 1),
+                                                        RandBound(BoardDim + 1)))));
+      }
+      // Verify scoring.
+      Voronoi::ScoreList scores;
+      if (game.Scores(&scores))
+      {
+        const FloatType totalScore = std::accumulate(scores.begin(), scores.end(),
+                                                     static_cast<FloatType>(0));
+        EXPECT_NEAR(expectTotalScore, totalScore, totalScore * 0.10f)
+          << "Scores did not sum properly on iteration " << iteration << " of "
+          << RandomIterations << ".";
+        ++scoreSuccessCount;
+      }
+    }
+    std::cout << "Scored " << scoreSuccessCount << " of " << RandomIterations
+              << " iterations successfully." << std::endl;
+    EXPECT_GE(scoreSuccessCount, kExpectScoreSuccessCount);
+  }
+  // Random cases. Make sure that the area sums to the expected total.
+  {
+    const float kExpectSuccessPct = 0.95f;
+    enum { RandomIterations = 500, };
+    const int kExpectScoreSuccessCount =
+      static_cast<int>(RandomIterations * kExpectSuccessPct);
+    const FloatType expectTotalScore = static_cast<FloatType>(BoardDim * BoardDim);
+    int scoreSuccessCount = 0;
+    for (int iteration = 0; iteration < RandomIterations; ++iteration)
+    {
       enum { Plays = 20, };
       Voronoi game(Players, StonesPerPlayer, Voronoi::BoardSize(BoardDim, BoardDim));
       // Play random stones.
