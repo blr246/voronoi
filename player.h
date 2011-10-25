@@ -22,8 +22,11 @@ struct RandomPlayer: public Player
   static void RandomPosition(const Voronoi& game, Stone* move)
   {
     Position boardSize = game.GetBoardSize();
-    move->pos.x = math::RandBound(boardSize.x);
-    move->pos.y = math::RandBound(boardSize.y);
+    std::cout << "size: " << boardSize.x << " X " << boardSize.y <<std::endl;
+    move->pos.x = math::RandBound(boardSize.x) + 1;
+    std::cout << "x: " << move->pos.x << std::endl;
+     move->pos.y = math::RandBound(boardSize.y) + 1;
+     std::cout << "y: " << move->pos.y << std::endl;
   }
 
   void Play(Voronoi& game)
@@ -83,9 +86,9 @@ struct GreedyPlayer: public Player
       //std::cout << ".";
       stone.pos = tiles.at(i).center;
       game.Play(stone);
-      float curScore = GameScore(game, stone.player);
+      float curScore = GameScore(game);
       game.Undo();
-      if(curScore >= bestScore)
+      if(curScore > bestScore)
       {
         bestTileIt = i;
         bestScore = curScore;
@@ -100,14 +103,16 @@ struct GreedyPlayer: public Player
     tiles.erase(tiles.begin()+bestTileIt); // Remove the played tile;
   }
 
-  static float GameScore(const Voronoi& game, int player)
+  static float GameScore(const Voronoi& game)
   {
+    Voronoi::StoneList playedStones= game.Played();
+    int lastPlayer = playedStones.back().player;
     Voronoi::ScoreList scores;
     game.Scores(&scores);
 
     // This is where a greedy heuristic goes, we want score plus some notion of defensibility,
     // Defensibility should correspond to how many polygons you own or how spread out your area is.
-    return scores[player]; 
+    return scores[lastPlayer]; 
   }
 
   Tile::TileList tiles;

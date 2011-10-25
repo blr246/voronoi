@@ -96,7 +96,7 @@ public:
       int currentPlayer = (lastPlayer + 1) % m_players;
       assert(currentPlayer >= 0);
       assert(currentPlayer < m_players);
-      return (lastPlayer + 1) % m_players;
+      return currentPlayer;
     }
   }
 
