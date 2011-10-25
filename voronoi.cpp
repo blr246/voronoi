@@ -11,6 +11,7 @@
 #include "util.h"
 #include "player.h"
 #include "voronoi_core.h"
+#include "geometry.h"
 
 int g_num_turns;
 int g_num_players;
@@ -97,7 +98,7 @@ void readSocket ( int sockfd, char buffer[1024] ) {
 
 void startGame()
 {
-    hps::voronoi::Vector2<int> v(BoardDim,BoardDim);
+    hps::geometry::Vector2<int> v(BoardDim,BoardDim);
     game = new hps::voronoi::Voronoi(g_num_players,g_num_turns,v);
     
     if(boardState.length() > 0)

@@ -1,6 +1,6 @@
 #ifndef _HPS_VORONOI_PLAYER_H_
 #define _HPS_VORONOI_PLAYER_H_
-
+#include"rand_bound.h"
 #include "voronoi_core.h"
 #include <vector>
 #include <algorithm>
@@ -179,8 +179,9 @@ struct DefensivePlayer
     Vector2<int> v2 = vertices.at(0);
     // std::cout << "x1: " << v1.x << ", y2: " << v2.y << ", y1: " << v1.y << ", x2: " << v2.x << std::endl;
     sum += (v1.x*v2.y - v1.y*v2.x);
+    sum = std::abs(sum);
     float area = static_cast<float>(sum)/2;
-    return std::abs(area);
+    return area;
   }
 
   static void ComputeCentroid(const Stone::Vertices& vertices, Position* pos)
