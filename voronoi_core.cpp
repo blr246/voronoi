@@ -1,4 +1,6 @@
 #include "voronoi_core.h"
+#include "voronoi_diagram_generator.h"
+#include <deque>
 #include <algorithm>
 #include <limits>
 #include <numeric>
@@ -28,35 +30,6 @@ struct StonePositionsEqual
   }
   const Stone* stone;
 };
-
-void InitBoardBoundaries(std::vector<Line<FloatType> >* edges)
-{
-  assert(edges);
-  // Bottom.
-  {
-    const Vector2<FloatType> boundaryPt(0.0f, 0.0f);
-    const Vector2<FloatType> dir(1.0f, 0.0f);
-    edges->push_back(Line<FloatType>(boundaryPt, dir));
-  }
-  // Right.
-  {
-    const Vector2<FloatType> boundaryPt(1.0f, 0.0f);
-    const Vector2<FloatType> dir(0.0f, 1.0f);
-    edges->push_back(Line<FloatType>(boundaryPt, dir));
-  }
-  // Top.
-  {
-    const Vector2<FloatType> boundaryPt(1.0f, 1.0f);
-    const Vector2<FloatType> dir(-1.0f, 0.0f);
-    edges->push_back(Line<FloatType>(boundaryPt, dir));
-  }
-  // Left.
-  {
-    const Vector2<FloatType> boundaryPt(0.0f, 1.0f);
-    const Vector2<FloatType> dir(0.0f, -1.0f);
-    edges->push_back(Line<FloatType>(boundaryPt, dir));
-  }
-}
 }
 
 Voronoi::Voronoi(const int players, const int stonesPerPlayer,
@@ -65,8 +38,7 @@ Voronoi::Voronoi(const int players, const int stonesPerPlayer,
   m_stonesPerPlayer(stonesPerPlayer),
   m_stonesPlayed(),
   m_stonesPlayedNorm(),
-  m_board(Vector2<int>(0, 0), Vector2<int>(boardSize.x, boardSize.y)),
-  m_scoreData(stonesPerPlayer)
+  m_board(Vector2<int>(0, 0), Vector2<int>(boardSize.x, boardSize.y))
 {}
 
 void Voronoi::InitBoard(std::string buffer, std::string start, std::string end)
@@ -113,9 +85,11 @@ bool Voronoi::Play(const Stone& stone)
   assert((stone.pos.x >= m_board.mins.x) && (stone.pos.y >= m_board.mins.y));
   assert((stone.pos.x <= m_board.maxs.x) && (stone.pos.y <= m_board.maxs.y));
   // Push the stone and the normalized stone.
+  const int dx = m_board.maxs.x - m_board.mins.x;
+  const int dy = m_board.maxs.y - m_board.mins.y;
   m_stonesPlayed.push_back(stone);
-  const StoneNormalized::Position posNorm(stone.pos.x / static_cast<FloatType>(m_board.maxs.x),
-                                          stone.pos.y / static_cast<FloatType>(m_board.maxs.y));
+  const StoneNormalized::Position posNorm(stone.pos.x / static_cast<FloatType>(dx),
+                                          stone.pos.y / static_cast<FloatType>(dy));
   m_stonesPlayedNorm.push_back(StoneNormalized(stone.player, posNorm));
   assert(m_stonesPlayed.size() == m_stonesPlayedNorm.size());
   return true;
@@ -133,17 +107,109 @@ void Voronoi::Undo()
 
 namespace detail
 {
+/// <summary> Test that a segment's length is more than the min length. </summary>
+template <typename NumericType>
+struct SegmentMinLengthSqFilter
+{
+  SegmentMinLengthSqFilter(const NumericType minLengthSq_) : minLengthSq(minLengthSq_) {}
+  inline bool operator()(const Segment2<NumericType>& s) const
+  {
+    const NumericType lengthSq = Vector2LengthSq(s.p1 - s.p0);
+    return lengthSq > minLengthSq;
+  }
+  NumericType minLengthSq;
+};
+
+/// <summary> Helper to find board edges in Voronoi polygons. </summary>
+template <typename NumericType>
+struct BoardEdgeHelper
+{
+  enum { NumBoardEdges = 4, };
+
+  BoardEdgeHelper(const AxisAlignedBox<NumericType>& board)
+  {
+    typedef Vector2<NumericType> Vector;
+    boardEdges[0] = Line<NumericType>(Vector(board.mins.x, board.mins.y), Vector( 1,  0));
+    boardEdges[1] = Line<NumericType>(Vector(board.maxs.x, board.mins.y), Vector( 0,  1));
+    boardEdges[2] = Line<NumericType>(Vector(board.maxs.x, board.maxs.y), Vector(-1,  0));
+    boardEdges[3] = Line<NumericType>(Vector(board.mins.x, board.maxs.y), Vector( 0, -1));
+  }
+
+  /// <summary> Test if the given points falls on the edge with the given index. </summary>
+  inline bool EdgeContainsPoint(const int edgeIdx, const Vector2<NumericType>& p)
+  {
+    // Get vector from edge base to point.
+    const Line<NumericType>* edge = boardEdges + edgeIdx;
+    const Vector2<NumericType> edgePtToP = p - edge->p0;
+    // See if the point is along the edge.
+    const NumericType dotAlongEdgeTest = Vector2Dot(edgePtToP, Vector2Rotate90(edge->dir));
+    if (fabs(dotAlongEdgeTest) < static_cast<NumericType>(1.0e-6))
+    {
+      return true;
+    }
+    else
+    {
+      return false;
+    }
+  }
+
+  /// <summary> Find the edge most counter clockwise that includes the given point. </summary>
+  /// <remarks>
+  ///   <para> Returns the edge index. </para>
+  /// </remarks>
+  int FindEdgeCCW(const Vector2<NumericType>& p)
+  {
+    int retEdgeIdx = -1;
+    for (int edgeIdx = 0; edgeIdx < NumBoardEdges; ++edgeIdx)
+    {
+      if (EdgeContainsPoint(edgeIdx, p))
+      {
+        retEdgeIdx = edgeIdx;
+      }
+    }
+    return retEdgeIdx;
+  }
+
+  /// <summary> Get the next edge index. </summary>
+  inline const int NextEdge(const int edgeIdx)
+  {
+    return (edgeIdx + 1) % NumBoardEdges;
+  }
+
+  /// <summary> Return the board edge endpoint traversing in the CCW direction. </summary>
+  inline const Vector2<NumericType>& EdgePtCCW(const int edgeIdx)
+  {
+    assert((edgeIdx >= 0) && (edgeIdx < NumBoardEdges));
+    int nextEdgeIdx = NextEdge(edgeIdx);
+    const Line<NumericType>& nextEdge = boardEdges[nextEdgeIdx];
+    return nextEdge.p0;
+  }
+
+  Line<NumericType> boardEdges[NumBoardEdges];
+};
+
+template <typename EqType>
+struct PtrDerefEquals
+  : public std::binary_function<const EqType*, const EqType*, bool>
+{
+  inline bool operator()(const EqType* lhs, const EqType* rhs) const
+  {
+    return *lhs == *rhs;
+  }
+};
+
 /// <summary> Comparison function for two unit vectors. </summary>
 /// <remarks>
 ///   <para> Sort unit vectors by angle measured from the x-axis. </summary>
 ///   <para> This is a strict weak ordering. </summary>
 /// </remarks>
+template <typename NumericType>
 struct UnitVectorFastAngleSort
 {
-  inline bool operator()(const Vector2<FloatType>& v0, const Vector2<FloatType>& v1) const
+  inline bool operator()(const Vector2<NumericType>& v0, const Vector2<NumericType>& v1) const
   {
 #if !NDEBUG
-    const FloatType kUnitVecLenSqBound = 1.0e-6f;
+    const NumericType kUnitVecLenSqBound = 1.0e-6f;
     assert(fabs(1.0f - Vector2LengthSq(v0)) < kUnitVecLenSqBound);
     assert(fabs(1.0f - Vector2LengthSq(v1)) < kUnitVecLenSqBound);
 #endif
@@ -207,122 +273,33 @@ struct UnitVectorFastAngleSort
       // Region defines reference vector. If y is positive, then it is the
       // positive x-axis. Otherwise it is the negative x-axis.
       const bool positiveX = (v0.y >= 0) && (v1.y >= 0);
-      const Vector2<FloatType> ref(Vector2<FloatType>(positiveX ? 1.0f : -1.0f, 0.0f));
-      const FloatType cosTheta_v0 = Vector2Dot(v0, ref);
-      const FloatType cosTheta_v1 = Vector2Dot(v1, ref);
+      const Vector2<NumericType> ref(Vector2<NumericType>(positiveX ? 1.0f : -1.0f, 0.0f));
+      const NumericType cosTheta_v0 = Vector2Dot(v0, ref);
+      const NumericType cosTheta_v1 = Vector2Dot(v1, ref);
       // Smaller angle comes first (cos(0) = 0).
       return (cosTheta_v0 > cosTheta_v1) ? true : false;
     }
   }
 };
 
-/// <summary> Comparison function for lines with unit direction. </summary>
-/// <remarks>
-///   <para> Sort lines by angle measured from the x-axis. </summary>
-/// </remarks>
-struct LineFastAngleSort
+/// <summary> Sort segments by converting to unit vectors. This is computationally
+///   inefficient due to lots of square rooting.
+/// </summary>
+template <typename NumericType>
+struct SegmentAngleSort
 {
-  inline bool operator()(const Line<FloatType>& a, const Line<FloatType>& b) const
+  inline bool operator()(const Segment2<NumericType>& lhs, const Segment2<NumericType>& rhs) const
   {
-    static UnitVectorFastAngleSort s_fastAngleSort;
-    return s_fastAngleSort(a.dir, b.dir);
+    static UnitVectorFastAngleSort<NumericType> s_unitVecSort;
+    return s_unitVecSort(Vector2Normalize(lhs.p1 - lhs.p0), Vector2Normalize(rhs.p1 - rhs.p0));
   }
 };
-
-/// <summary> Test that two vectors are nearly equal. </summary>
-struct Vector2NearlyEqual
-{
-  Vector2NearlyEqual(const FloatType errSq_) : errSq(errSq_) {}
-  inline bool operator()(const Vector2<FloatType>& a, const Vector2<FloatType>& b) const
-  {
-    const FloatType testErrSq = Vector2LengthSq(a - b);
-    return testErrSq <= errSq;
-  }
-  FloatType errSq;
-};
-
-/// <summary> Helper to find lines with the same direction. </summary>
-struct LineDirNearlyEqual
-{
-  LineDirNearlyEqual(const FloatType errSq) : vector2NearlyEqual(errSq) {}
-  inline bool operator()(const Line<FloatType>& a, const Line<FloatType>& b) const
-  {
-    return vector2NearlyEqual(a.dir, b.dir);
-  }
-  Vector2NearlyEqual vector2NearlyEqual;
-};
-
-void PrettyPrintPyPlot(std::ostream& stream,
-                       const std::vector<Voronoi::StoneNormalized>& stones,
-                       const std::vector<Line<FloatType> >& edges,
-                       const std::vector<Vector2<FloatType> >& vertices)
-{
-  std::stringstream ss;
-
-  // Print script header.
-  stream
-    << "import matplotlib.pyplot as plt" << std::endl
-    << std::endl
-    << "# Plot the board." << std::endl
-    << "boardPts = [(0.,0.), (1.,0.), (1.,1.), (0.,1.), (0., 0.)]" << std::endl
-    << "plt.plot([pt[0] for pt in boardPts], [pt[1] for pt in boardPts], 'k--', lw=2)" << std::endl;
-
-  // Print stone locations.
-  const char colors[] = "bgrcmyk";
-  enum { NumColors = (sizeof(colors) / sizeof(colors[0])), };
-  ss.str(std::string());
-  ss.clear();
-  ss << "# Print stones." << std::endl;
-  for (int stoneIdx = 0; stoneIdx < static_cast<int>(stones.size()); ++stoneIdx)
-  {
-    const Voronoi::StoneNormalized& stone = stones[stoneIdx];
-    const char color = colors[stone.player];
-    ss << "plt.plot([" << stone.pos.x << "], [" << stone.pos.y << "], "
-       << "'" << color << ".')" << std::endl;
-  }
-  stream << ss.str() << std::endl << std::endl;
-
-  // Print edges.
-  ss.str(std::string());
-  ss.clear();
-  ss << "# Print edges." << std::endl;
-  for (int edgeIdx = 0; edgeIdx < static_cast<int>(edges.size()); ++edgeIdx)
-  {
-    const Line<FloatType>& edge = edges[edgeIdx]; 
-//    const Vector2<FloatType> edgeStart = edge.p0 - edge.dir;
-//    const Vector2<FloatType> edgeEnd = edge.p0 + edge.dir;
-//    ss << "plt.plot([" << edgeStart.x << ", " << edgeEnd.x << "], "
-//       << "[" << edgeStart.y << ", " << edgeEnd.y << "], 'k-')" << std::endl;
-    ss << "plt.arrow(" << edge.p0.x << ", " << edge.p0.y << ", "
-       << 0.375f * edge.dir.x << ", "
-       << 0.375f * edge.dir.y << ", "
-       << "head_width=.025)" << std::endl;
-  }
-  stream << ss.str() << std::endl << std::endl;
-
-  // Print vertices.
-  ss.str(std::string());
-  ss.clear();
-  ss << "# Print vertices." << std::endl;
-  for (int vertexIdx = 0; vertexIdx < static_cast<int>(vertices.size()); ++vertexIdx)
-  {
-    const Vector2<FloatType>& vertex = vertices[vertexIdx]; 
-    ss << "plt.plot([" << vertex.x << "], " << "[" << vertex.y << "], 'ko')" << std::endl;
-  }
-  stream << ss.str() << std::endl << std::endl;
-
-  // Print script footer.
-  stream
-    << "# Set axis limits and plot." << std::endl
-    << "VIEW_OFFSET = 0.0625" << std::endl
-    << "plt.gca().set_xlim([-VIEW_OFFSET, 1. + VIEW_OFFSET])" << std::endl
-    << "plt.gca().set_ylim([-VIEW_OFFSET, 1. + VIEW_OFFSET])" << std::endl
-    << "plt.show()" << std::endl
-    << std::endl;
-}
 }
 
-void Voronoi::Scores(ScoreList* scores) const
+const FloatType kVecEqSqBound = static_cast<FloatType>(1.0e-5);
+
+
+bool Voronoi::Scores(ScoreList* scores) const
 {
   // Initialize scores.
   scores->assign(m_players, 0);
@@ -335,390 +312,324 @@ void Voronoi::Scores(ScoreList* scores) const
     {
       scores->at(0) = boardTotalArea;
     }
-    return;
+    return true;;
   }
 
-  // reissb -- 20111021 -- Scoring algorithm:
-  //   For each stone s_i:
-  //     Lines <= empty
-  //     Boundaries <= empty
-  //     PolygonPoints <= empty
-  //     For each stone s_j such that s_j != s_i:
-  //       Push line(point = average(s_i, s_j), dir = perp(s_i - s_j)) to Lines
-  //     For each stone s_j such that s_j != s_i:
-  //       Find closest point p by intersecting ray (s_j - s_i) with all Lines
-  //       If p = average(s_i, s_j), then stone s_j defines a region boundary
-  //         for s_i so push line to BoundaryLines
-  //     Sort BoundaryLines in angle order using the line direction.
-  //     For each consecutive pair of boundaries in sorted list
-  //       Push point p = intersect(b_n, b_n+1) to PolygonPoints
-  //     Push point p = intersect(b_0, b_last) to PolygonPoints
-  //     Compute the polygon area using polygon points as in
-  //       http://www.mathopenref.com/coordpolygonarea.html
+  AxisAlignedBox<FloatType> boardNorm(Vector2<FloatType>(0, 0), Vector2<FloatType>(1, 1));
+  detail::BoardEdgeHelper<FloatType> boardEdgeHelper(boardNorm);
+  const int dx = m_board.maxs.x - m_board.mins.x;
+  const int dy = m_board.maxs.y - m_board.mins.y;
+  const Vector2<FloatType> halfMinEdge(1 / static_cast<FloatType>(2 * dx),
+                                       1 / static_cast<FloatType>(2 * dy));
+  const FloatType halfMinEdgeLenSq = Vector2Length(halfMinEdge);
+  const detail::SegmentMinLengthSqFilter<FloatType> minLengthSqFilter(halfMinEdgeLenSq);
+  const FloatType halfMinEdgeLen = sqrt(halfMinEdgeLenSq);
+  const Vector2<FloatType> halfMinEdgeLenVec(halfMinEdgeLen, halfMinEdgeLen);
+  AxisAlignedBox<FloatType> boardNormNoEdge(boardNorm.mins + halfMinEdgeLenVec,
+                                            boardNorm.maxs - halfMinEdgeLenVec);
 
-  // Compute score for all stones.
-  std::vector<Line<FloatType> >& candidateEdges = m_scoreData.candidateEdges;
-  const std::vector<Line<FloatType> >& boardEdges = m_scoreData.boardEdges;
-  std::vector<Vector2<FloatType> >& vertices = m_scoreData.vertices;
-  typedef std::vector<StoneNormalized>::const_iterator StoneIterator;
-  for (StoneIterator s_i = m_stonesPlayedNorm.begin();
-//       s_i != m_stonesPlayedNorm.end() - 1; // reissb -- 20111023 -- Cannot use this optimization
-//                                            //   until the scoring is verified correct
-       s_i != m_stonesPlayedNorm.end();
-       ++s_i)
+  // Run the legacy code to generate the Voronoi diagram.
+  VoronoiDiagramGenerator diagram;
+  const int numStones = static_cast<int>(m_stonesPlayedNorm.size());
+  std::vector<float> xCoords(numStones);
+  std::vector<float> yCoords(numStones);
+  for (int stoneIdx = 0; stoneIdx < numStones; ++stoneIdx)
   {
-    // Clear score data.
-    m_scoreData.Reset();
-    // Find candidate edges.
-    for (StoneIterator s_j = m_stonesPlayedNorm.begin();
-         s_j != m_stonesPlayedNorm.end();
-         ++s_j)
+    xCoords[stoneIdx] = m_stonesPlayedNorm[stoneIdx].pos.x;
+    yCoords[stoneIdx] = m_stonesPlayedNorm[stoneIdx].pos.y;
+  }
+  const bool res = diagram.generateVoronoi(&xCoords.front(), &yCoords.front(),
+                                           numStones, 0.0f, 1.0f, 0.0f, 1.0f);
+  assert(res);
+  // Extract the segments from the diagram assigned to each stone.
+  diagram.resetIterator();
+  typedef std::vector<Segment2<FloatType> > EdgeList;
+  EdgeList edges;
+  edges.reserve(numStones * numStones);
+  Vector2<FloatType> p0;
+  Vector2<FloatType> p1;
+  typedef std::deque<const Segment2<FloatType>*> SegmentQueue;
+  std::vector<SegmentQueue> stoneEdges(numStones);
+  std::for_each(stoneEdges.begin(), stoneEdges.end(),
+                std::mem_fun_ref(&SegmentQueue::clear));
+  int stoneIndices[2];
+  while (diagram.getNext(p0.x, p0.y, p1.x, p1.y, stoneIndices))
+  {
+//    std::cout << "Edge: "
+//              << "(" << p0.x << ", " << p0.y << ") -> "
+//              << "(" << p1.x << ", " << p1.y << ") "
+//              << " : Stones {" << stoneIndices[0] << " "
+//              << stoneIndices[1] << "}" << std::endl;
+    const Segment2<FloatType> segment(p0, p1);
+    // Filter min edge length squared based on board size.
+    if (minLengthSqFilter(segment))
     {
-      if (s_i == s_j)
+//      bool onEdge = false;
+//      // Don't take segments on the board edge. I'll handle those later.
+//      if (!AxisAlignedBoxContains(boardNormNoEdge, segment.p0) &&
+//          !AxisAlignedBoxContains(boardNormNoEdge, segment.p1))
+//      {
+//        const Vector2<FloatType> segDirDenorm = segment.p1 - segment.p0;
+//        const Vector2<FloatType> segDir = (1.0f / Vector2Length(segDirDenorm)) * segDirDenorm;
+//        // Do deep check.
+//        for (int edgeIdx = 0; edgeIdx < boardEdgeHelper.NumBoardEdges; ++edgeIdx)
+//        {
+//          if (fabs(Vector2Dot(segDir, boardEdgeHelper.boardEdges[0].dir)) < 1.0e-6f)
+//          {
+//            onEdge |= boardEdgeHelper.EdgeContainsPoint(0, segment.p0);
+//          }
+//        }
+//      }
+//      if (!onEdge)
       {
-        continue;
-      }
-      const Vector2<FloatType> p0 = 0.5f * (s_i->pos + s_j->pos);
-      const Vector2<FloatType> dirDenorm(s_j->pos - s_i->pos);
-      const Vector2<FloatType> dir = (1.0f / Vector2Length(dirDenorm)) * dirDenorm;
-      candidateEdges.push_back(Line<FloatType>(p0, Vector2Rotate90(dir)));
-    }
-    // reissb -- 20111022 -- The shape is always convex, so we don't need to
-    //   worry about the sorting producing out-of-order edges.
-    // Sort the boundaries.
-    std::sort(candidateEdges.begin(), candidateEdges.end(), detail::LineFastAngleSort());
-    // Eliminate edges that have the same direction as existing edges. Keep only
-    // the closest edge.
-    {
-      typedef std::vector<Line<FloatType> >::iterator EdgeIterator;
-      for (;;)
-      {
-        // Find next edge with sime direction.
-        EdgeIterator edgeSameDir = std::adjacent_find(candidateEdges.begin(),
-                                                      candidateEdges.end(),
-                                                      detail::LineDirNearlyEqual(1.0e-6f));
-        if (edgeSameDir == candidateEdges.end())
+        // See if dup.
+        EdgeList::const_iterator seg = std::find_if(edges.begin(), edges.end(),
+                                                    std::bind1st(std::equal_to<Segment2<FloatType> >(),
+                                                                 segment));
+        if (edges.end() == seg)
         {
-          break;
+          edges.push_back(segment);
+          seg = edges.end() - 1;
+        }
+        // See if added already.
+        {
+          SegmentQueue& thisStoneEdges = stoneEdges[stoneIndices[0]];
+          SegmentQueue::const_iterator added =
+            std::find_if(thisStoneEdges.begin(), thisStoneEdges.end(),
+                         std::bind1st(detail::PtrDerefEquals<Segment2<FloatType> >(), &*seg));
+          if (thisStoneEdges.end() == added)
+          {
+            thisStoneEdges.push_back(&*seg);
+          }
+        }
+        {
+          SegmentQueue& thisStoneEdges = stoneEdges[stoneIndices[1]];
+          SegmentQueue::const_iterator added =
+            std::find_if(thisStoneEdges.begin(), thisStoneEdges.end(),
+                         std::bind1st(detail::PtrDerefEquals<Segment2<FloatType> >(), &*seg));
+          if (thisStoneEdges.end() == added)
+          {
+            thisStoneEdges.push_back(&*seg);
+          }
+        }
+      }
+    }
+  }
+  // Link the extracted segments to create closed polygons around each stone.
+  typedef std::vector<Vector2<FloatType> > VertexList;
+  std::vector<VertexList> stoneVertices(numStones);
+  typedef std::deque<Segment2<FloatType> > LinkedSegmentsQueue;
+  LinkedSegmentsQueue linkedSegments;
+  for (int stoneIdx = 0; stoneIdx < numStones; ++stoneIdx)
+  {
+    linkedSegments.clear();
+    SegmentQueue* segments = &stoneEdges[stoneIdx];
+    assert(segments->size() > 0);
+    VertexList& vertices = stoneVertices[stoneIdx];
+    while (!segments->empty())
+    {
+      const int linkedSegmentCountBefore = linkedSegments.size();
+      // For each segment, find its match in the linked segments.
+      //   { (x0, y0) -> (x1, y1) } ==> { (x1, y1) -> (x2, y2) }
+      // Want to go counter-clockwise. Need to find an unambiguous edge.
+      const int numSegments = static_cast<int>(segments->size());
+      for (int segmentIdx = 0; segmentIdx < numSegments; ++segmentIdx)
+      {
+        const Segment2<FloatType>* seg = segments->front();
+        segments->pop_front();
+        // Find the inverse transformation of the vector along the segment and
+        // it to the vector from the start of the segment to the stone.
+        const Vector2<FloatType> alongSegDenorm = seg->p1 - seg->p0;
+        const Vector2<FloatType> alongSeg = Vector2Normalize(alongSegDenorm);
+        const Vector2<FloatType> xAxis(1.0f, 0.0f);
+  #ifndef NDEBUG
+        const Vector2<FloatType> alongSegTForm(
+          (alongSeg.x * alongSeg.x) + (alongSeg.y * alongSeg.y),
+          (alongSeg.x * alongSeg.y) - (alongSeg.y * alongSeg.x));
+        const FloatType errSq = Vector2LengthSq(xAxis - alongSegTForm);
+        assert(errSq < 1.0e-6f);
+  #endif
+        const Vector2<FloatType> ptToStone = m_stonesPlayedNorm[stoneIdx].pos - seg->p0;
+        const Vector2<FloatType> ptToStoneTform(
+          (ptToStone.x * alongSeg.x) + (ptToStone.y * alongSeg.y),
+          (ptToStone.x * alongSeg.y) - (ptToStone.y * alongSeg.x));
+        // Get the Z-component of the in-plane cross product of the vector from
+        // the stone to the segment point transformed by the inverse rotation of
+        // the segment and the X-axis. This is simply the Y-component.
+        //   (a cross b).z = (a_x*b_y - a_y*b_x)
+        // The sign of the Z-component gives the handedness. When using the
+        // Nearly parallel?
+        if (fabs(ptToStoneTform.y) < 1.0e-6f)
+        {
+          // Rotate queue to the next segment.
+          segments->push_back(seg);
+          continue;
         }
         else
         {
-          // Retain edges and advance pointer.
-          const EdgeIterator edgeA = edgeSameDir;
-          const EdgeIterator edgeB = ++edgeSameDir;
-          // Keep the closer one.
-          const FloatType distA = Vector2LengthSq(edgeA->p0 - s_i->pos);
-          const FloatType distB = Vector2LengthSq(edgeB->p0 - s_i->pos);
-          if (distA < distB)
+          linkedSegments.push_front(*seg);
+          if (ptToStoneTform.y > 0)
           {
-            candidateEdges.erase(edgeB);
+            std::swap(linkedSegments.front().p0, linkedSegments.front().p1);
           }
-          else
-          {
-            candidateEdges.erase(edgeA);
-          }
-        }
-      }
-    }
-    // Find start index for vertex creation. Want an edge that is closest to the stone.
-    {
-      int edgeStartIdx = 0;
-      typedef std::vector<Line<FloatType> >::const_iterator EdgeIterator;
-      for (; edgeStartIdx < static_cast<int>(candidateEdges.size()); ++edgeStartIdx)
-      {
-        const Vector2<FloatType>& ecP0 = candidateEdges[edgeStartIdx].p0;
-        const Vector2<FloatType> dirDenorm = ecP0 - s_i->pos;
-        if (detail::Vector2NearlyEqual(1.0e-6f)(dirDenorm, Vector2<FloatType>(0.0f, 0.0f)))
-        {
-          break;
-        }
-        const Vector2<FloatType> dir = (1.0f / Vector2Length(dirDenorm)) * dirDenorm;
-        const Line<FloatType> edgeNormal(ecP0, dir);
-        // Intersect with all other lines to find closest.
-        const Line<FloatType>* closestEdge = NULL;
-        FloatType closestEdgeDist = std::numeric_limits<FloatType>::infinity();
-        for (EdgeIterator edge = candidateEdges.begin();
-             edge != candidateEdges.end();
-             ++edge)
-        {
-          Vector2<FloatType> isect;
-          const bool isectRes = LineIntersectLineUnique(*edge, edgeNormal, &isect);
-          if (isectRes)
-          {
-            Vector2<FloatType> stoneToLine(isect - s_i->pos);
-            const FloatType edgeDist = Vector2Length(stoneToLine);
-            if (edgeDist < closestEdgeDist)
-            {
-              closestEdgeDist = edgeDist;
-              closestEdge = &*edge;
-            }
-          }
-        }
-        // See if we found an edge for stone s_i.
-        if (edgeNormal.p0 == closestEdge->p0)
-        {
           break;
         }
       }
-      // Transform the start to the front of the vector.
-      assert(edgeStartIdx < static_cast<int>(candidateEdges.size()));
-      if (edgeStartIdx > 0)
+      // TODO(reissb) -- 20111025 -- Just split the score evenly if I fail?
+      assert((linkedSegmentCountBefore + 1) == static_cast<int>(linkedSegments.size()));
+      typedef LinkedSegmentsQueue::const_iterator LinkedSegmentIter;
+      const Segment2<FloatType> frontLink = linkedSegments.front();
+      typedef SegmentQueue::const_iterator EdgeIterator;
+      bool linkExtended;
+      do
       {
-        std::vector<Line<FloatType> > newEdgeList(candidateEdges.size());
-        std::copy(candidateEdges.begin() + edgeStartIdx, candidateEdges.end(), newEdgeList.begin());
-        std::copy(candidateEdges.begin(), candidateEdges.begin() + edgeStartIdx,
-                  newEdgeList.end() - edgeStartIdx);
-        candidateEdges = newEdgeList;
-      }
-    }
-    // Find intersection of all consecutive boundaries to get polygon points.
-    {
-      static const AxisAlignedBox<FloatType> s_normBoard(Vector2<FloatType>(-1e-6f, -1e-6f),
-                                                     Vector2<FloatType>(1.0f + 1e-6f, 1.0f + 1e-6f));
-      typedef std::vector<Line<FloatType> >::const_iterator EdgeIterator;
-      int edgeCount = static_cast<int>(candidateEdges.size());
-      int maxEdgeIdx = edgeCount - 1;
-      int edgeFrontier = 0;
-      for (;; ++edgeFrontier)
-      {
-        assert(edgeCount == static_cast<int>(candidateEdges.size()));
-        assert(maxEdgeIdx == edgeCount - 1);
-        assert(static_cast<int>(vertices.size()) == edgeFrontier);
-        const Line<FloatType>& a = candidateEdges[edgeFrontier];
-        Vector2<FloatType> vertex;
-        bool tryWall = false;
-        if (edgeFrontier < maxEdgeIdx)
+        linkExtended = false;
+        // Link another segment.
+        for (EdgeIterator seg = segments->begin(); seg != segments->end(); ++seg)
         {
-          int edgeIdxNext = (edgeFrontier + 1) % edgeCount;
-          const Line<FloatType>& b = candidateEdges[edgeIdxNext];
-          const bool isectRes = LineIntersectLineUnique(a, b, &vertex);
-          // Is the vertex within the board region?
-          if (isectRes)
+          Segment2<FloatType> segIns = **seg;
+          // Check start link (segments have no direction).
           {
-            if (AxisAlignedBoxContains(s_normBoard, vertex))
+            const bool insert     = Vector2NearlyEqual(segIns.p1, frontLink.p0, kVecEqSqBound);
+            const bool insertFlip = Vector2NearlyEqual(segIns.p0, frontLink.p0, kVecEqSqBound);
+            if (insert || insertFlip)
             {
-              bool acceptVertex = true;
-              bool tossLastVertex = false;
-              // See if the last edge is on the intersection.
-              const Vector2<FloatType> edgeDirDenorm = vertex - a.p0;
-              if (detail::Vector2NearlyEqual(1.0e-6f)(edgeDirDenorm, Vector2<FloatType>(0.0f, 0.0f)))
+              if (!Segment2NearlyEqual(segIns, frontLink, kVecEqSqBound))
               {
-                tossLastVertex = true;
-              }
-              else
-              {
-                // See if in line with edge.
-                const Vector2<FloatType> edgeDir = (1.0f / Vector2Length(edgeDirDenorm)) * edgeDirDenorm;
-                acceptVertex = detail::Vector2NearlyEqual(1.0e-6f)(edgeDir, a.dir);
-                if (acceptVertex && vertices.size() > 0)
+                if (insertFlip)
                 {
-                  // See if duplicate.
-                  if (detail::Vector2NearlyEqual(1.0e-6f)(vertex, vertices.back()))
-                  {
-                    tossLastVertex = true;
-                  }
-                  // See if proper direction with last vertex.
-                  else
-                  {
-                    const Vector2<FloatType> polyEdgeDenorm = vertex - vertices.back();
-                    const Vector2<FloatType> polyEdge = (1.0f / Vector2Length(polyEdgeDenorm)) *
-                                                    polyEdgeDenorm;
-                    acceptVertex = detail::Vector2NearlyEqual(1.0e-6f)(polyEdge, a.dir);
-                  }
+                  std::swap(segIns.p0, segIns.p1);
                 }
+                linkedSegments.push_front(segIns);
               }
-              if (tossLastVertex && (vertices.size() > 0))
-              {
-                vertices.pop_back();
-                --maxEdgeIdx;
-                --edgeCount;
-                candidateEdges.erase(candidateEdges.begin() + edgeFrontier);
-                --edgeFrontier;
-              }
-              if (acceptVertex)
-              {
-                vertices.push_back(vertex);
-              }
-              else
-              {
-                tryWall = true;
-              }
+              segments->erase(seg);
+              linkExtended = true;
+              break;
             }
-            // Not on board.
+          }
+          // Check end link (segments have no direction).
+          {
+            const Segment2<FloatType>& back = linkedSegments.back();
+            const bool insert     = Vector2NearlyEqual(back.p1, segIns.p0, kVecEqSqBound);
+            const bool insertFlip = Vector2NearlyEqual(back.p1, segIns.p1, kVecEqSqBound);
+            if (insert || insertFlip)
+            {
+              if (!Segment2NearlyEqual(segIns, back, kVecEqSqBound))
+              {
+                if (insertFlip)
+                {
+                  std::swap(segIns.p0, segIns.p1);
+                }
+                linkedSegments.push_back(segIns);
+              }
+              segments->erase(seg);
+              linkExtended = true;
+              break;
+            }
+          }
+        }
+      } while (linkExtended);
+    }
+    // Sort the segments.
+    std::sort(linkedSegments.begin(), linkedSegments.end(), detail::SegmentAngleSort<FloatType>());
+    // Create closed polygons.
+    {
+      typedef LinkedSegmentsQueue::const_iterator LinkedSegIter;
+      const Vector2<FloatType>* firstPt = &linkedSegments.front().p0;
+      LinkedSegIter curSeg = linkedSegments.begin();
+      // Until the shape is closed...
+      int wallsAdded = 0;
+      while (!Vector2NearlyEqual(curSeg->p1, *firstPt, kVecEqSqBound))
+      {
+        // Do we need to use walls?
+        const Vector2<FloatType>* lastPt = &curSeg->p1;
+        LinkedSegIter nextSeg = curSeg + 1;
+        const bool outOfSegments = (linkedSegments.end() == nextSeg);
+        bool runAlongWalls = outOfSegments || (!outOfSegments &&
+                                               !Vector2NearlyEqual(*lastPt, nextSeg->p0,
+                                                                   kVecEqSqBound));
+        const Vector2<FloatType> runAlongWallsToPt = (runAlongWalls && !outOfSegments) ?
+                                                     nextSeg->p0 : *firstPt;
+        if (runAlongWalls)
+        {
+          // Close the shape using the board edges.
+          int lastSegEdge = boardEdgeHelper.FindEdgeCCW(*lastPt);
+          if(lastSegEdge < 0)
+          {
+            // reissb -- 20111025 -- Don't know what do here...
+            return false;
+          }
+          for (;;)
+          {
+            // Are we done?
+            const bool foundCloser = boardEdgeHelper.EdgeContainsPoint(lastSegEdge,
+                                                                       runAlongWallsToPt);
+            if (foundCloser)
+            {
+              nextSeg = linkedSegments.insert(nextSeg, Segment2<FloatType>(*lastPt,
+                                                                           runAlongWallsToPt)) + 1;
+              if (++wallsAdded > 4)
+              {
+                return false;
+              }
+              break;
+            }
             else
             {
-              if (Vector2Dot(a.dir, b.dir) > 0)
+              // Add the segment to the end of the board edge.
+              const Vector2<FloatType>& nextPt = boardEdgeHelper.EdgePtCCW(lastSegEdge);
+              nextSeg = linkedSegments.insert(nextSeg, Segment2<FloatType>(*lastPt, nextPt)) + 1;
+              lastPt = &nextPt;
+              lastSegEdge = boardEdgeHelper.NextEdge(lastSegEdge);
+              if (++wallsAdded > 4)
               {
-                const FloatType distSqA = Vector2LengthSq(a.p0 - s_i->pos);
-                const FloatType distSqB = Vector2LengthSq(b.p0 - s_i->pos);
-                if (distSqA < distSqB)
-                {
-                  candidateEdges.erase(candidateEdges.begin() + edgeIdxNext);
-                }
-                else
-                {
-                  candidateEdges.erase(candidateEdges.begin() + edgeFrontier);
-                  if (vertices.size() > 0)
-                  {
-                    --edgeFrontier;
-                    vertices.pop_back();
-                  }
-                }
-                --maxEdgeIdx;
-                --edgeCount;
+                return false;
               }
-              tryWall = true;
             }
           }
-          // Need to try a wall.
-          else
-          {
-            if (Vector2Dot(a.dir, b.dir) > 0.99f)
-            {
-              const FloatType distSqA = Vector2LengthSq(a.p0 - s_i->pos);
-              const FloatType distSqB = Vector2LengthSq(b.p0 - s_i->pos);
-              if (distSqA < distSqB)
-              {
-                candidateEdges.erase(candidateEdges.begin() + edgeIdxNext);
-              }
-              else
-              {
-                candidateEdges.erase(candidateEdges.begin() + edgeFrontier);
-                if (vertices.size() > 0)
-                {
-                  --edgeFrontier;
-                  vertices.pop_back();
-                }
-              }
-              --maxEdgeIdx;
-              --edgeCount;
-            }
-            tryWall = true;
-          }
+          curSeg = linkedSegments.end() - 1;
         }
-        // When at the end of the list, find a wall to intersect.
-        if ((edgeFrontier == maxEdgeIdx) || tryWall)
+        else
         {
-          // Locate a board edge. Find edge just after this one in order.
-          int boardEdgeIdx = 0;
-          {
-            for (; boardEdgeIdx < static_cast<int>(boardEdges.size()); ++boardEdgeIdx)
-            {
-              if (detail::LineFastAngleSort()(a, boardEdges[boardEdgeIdx]))
-              {
-                break;
-              }
-            }
-          }
-          // Intersect with the board edge.
-          for (;; ++boardEdgeIdx)
-          {
-            boardEdgeIdx %= static_cast<int>(boardEdges.size());
-            const Line<FloatType>& boardEdge = boardEdges[boardEdgeIdx];
-            const bool isectRes = LineIntersectLineUnique(a, boardEdge, &vertex);
-            // Is the vertex within the board region?
-            if (isectRes && AxisAlignedBoxContains(s_normBoard, vertex))
-            {
-              // Make sure that the vertex is in line with the edge. If it is on the
-              // edge point then we'll take it unless it is a duplicate.
-              bool acceptVertex = true;
-              const Vector2<FloatType> edgeDirDenorm = vertex - a.p0;
-              if (!detail::Vector2NearlyEqual(1.0e-6f)(edgeDirDenorm, Vector2<FloatType>(0.0f, 0.0f)))
-              {
-                const Vector2<FloatType> edgeDir = (1.0f / Vector2Length(edgeDirDenorm)) * edgeDirDenorm;
-                acceptVertex = detail::Vector2NearlyEqual(1.0e-6f)(edgeDir, a.dir);
-              }
-              if (acceptVertex && (vertices.size() > 0))
-              {
-                // See if this is a dup.
-                if (detail::Vector2NearlyEqual(1.0e-6f)(vertex, vertices.back()))
-                {
-                  vertices.pop_back();
-                  --maxEdgeIdx;
-                  --edgeCount;
-                  candidateEdges.erase(candidateEdges.begin() + edgeFrontier);
-                  --edgeFrontier;
-                }
-              }
-              if (acceptVertex)
-              {
-                candidateEdges.insert(candidateEdges.begin() + edgeFrontier + 1, boardEdge);
-                ++edgeCount;
-                ++maxEdgeIdx;
-                vertices.push_back(vertex);
-                break;
-              }
-            }
-          }
-        }
-        // See if shape can be closed.
-        if ((vertices.size() == candidateEdges.size() - 1) && (candidateEdges.size() > 2))
-        {
-          bool shapeClosed = false;
-          Vector2<FloatType> lastVertex;
-          const bool isectRes = LineIntersectLineUnique(candidateEdges.back(),
-                                                        candidateEdges.front(), &lastVertex);
-          // Is the vertex within the board region?
-          if (isectRes && AxisAlignedBoxContains(s_normBoard, lastVertex))
-          {
-            // Does the final edge match the first edge?
-            const Vector2<FloatType> edgeDirDenorm = vertices.front() - lastVertex;
-            const Vector2<FloatType> edgeDir = (1.0f / Vector2Length(edgeDirDenorm)) * edgeDirDenorm;
-            shapeClosed = detail::Vector2NearlyEqual(1.0e-6f)(edgeDir, candidateEdges.front().dir);
-          }
-          if (shapeClosed)
-          {
-            // If this vertex is a duplicate, then eliminate the last edge.
-            if (detail::Vector2NearlyEqual(1.0e-6f)(lastVertex, vertices.back()))
-            {
-              candidateEdges.pop_back();
-              vertices.pop_back();
-            }
-            vertices.push_back(lastVertex);
-            assert(vertices.size() == candidateEdges.size());
-            break;
-          }
+          ++curSeg;
         }
       }
     }
-    // reissb -- 20111023 -- Export as python script.
-    //detail::PrettyPrintPyPlot(std::cout, m_stonesPlayedNorm, candidateEdges, vertices);
-    // Compute polygon normalize area.
-    FloatType normArea = 0.0f;
+//    if (!Vector2NearlyEqual(linkedSegments.back().p1, linkedSegments.front().p0, kVecEqSqBound))
+//    {
+//      return false;
+//    }
+    // Gather the vertices and compute the area.
+    FloatType normArea = 0;
     {
-      typedef std::vector<Vector2<FloatType> >::const_iterator VertexIterator;
-      VertexIterator p0 = vertices.begin();
-      VertexIterator p1 = vertices.begin() + 1;
-      for (; p1 != vertices.end(); ++p0, ++p1)
-      {
-        normArea += (p0->x * p1->y) - (p0->y * p1->x);
-      }
-      // Integrate last point and divide by two.
-      normArea += (p0->x * vertices.front().y) - (p0->y * vertices.front().x);
-      normArea *= 0.5f;
+      const Segment2<FloatType>& segFirst = linkedSegments.front();
+      normArea += (segFirst.p0.x * segFirst.p1.y) - (segFirst.p0.y * segFirst.p1.x);
+      vertices.push_back(segFirst.p0);
     }
-    // Add normalized area to the player's score.
-    assert((s_i->player >= 0) && (s_i->player < static_cast<int>(scores->size())));
-    scores->at(s_i->player) += normArea * boardTotalArea;
+    typedef LinkedSegmentsQueue::const_iterator LinkedSegIter;
+    for (LinkedSegIter linkedSeg = linkedSegments.begin() + 1;
+         linkedSeg != linkedSegments.end();
+         ++linkedSeg)
+    {
+      vertices.push_back(linkedSeg->p0);
+      vertices.push_back(linkedSeg->p1);
+      normArea += (linkedSeg->p0.x * linkedSeg->p1.y) - (linkedSeg->p0.y * linkedSeg->p1.x);
+    }
+    normArea *= static_cast<FloatType>(0.5);
+    // Add this polygon to the player score.
+    scores->at(stoneIdx % m_players) += normArea * boardTotalArea;
   }
-//  // reissb -- 20111023 -- This optimization cannot be used until the scoring is verified correct.
-//  // The remainder of the score goes to the last player to play a stone.
-//  const FloatType scoreTotal = std::accumulate(scores->begin(), scores->end(),
-//                                               static_cast<FloatType>(0));
-//  assert((scoreTotal > 0) && (scoreTotal < boardTotalArea));
-//  assert((m_stonesPlayed.back().player >= 0) &&
-//         (m_stonesPlayed.back().player < static_cast<int>(scores->size())));
-//  scores->at(m_stonesPlayed.back().player) += boardTotalArea - scoreTotal;
+  return true;
 }
-
-Voronoi::ScoreData::ScoreData(const int players)
-: candidateEdges(players),
-  boardEdges(),
-  vertices(players)
+/*
+bool Voronoi::Scores(ScoreList* scores) const
 {
-  // Initialize board edges.
-  detail::InitBoardBoundaries(&boardEdges);
-}
+  bool FortuneScoringSucceeded = FortuneScores(scores);
+  if(FortuneScoringSucceeded)
+    return true
+  else
+    NaiveScore(this, scores);
+}*/
 
 }
 }

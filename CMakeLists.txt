@@ -8,7 +8,7 @@ find_package(OpenMP REQUIRED)
 #   voronoi_core - shared objects for voronoi
 project(voronoi_core)
 set(SRCS
-    "scoring.cpp"
+    "voronoi_diagram_generator.cpp"
     "voronoi_core.cpp")
 add_library(voronoi_core STATIC ${SRCS} ${HEADERS})
 
