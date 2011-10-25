@@ -2,6 +2,7 @@
 #define _HPS_VORONOI_VORONOI_CORE_H_
 #include "geometry.h"
 #include <vector>
+#include <limits>
 
 namespace hps
 {
@@ -100,6 +101,11 @@ public:
     return m_board.maxs;
   }
 
+  inline Board GetBoard() const
+  {
+    return m_board;
+  }
+
 private:
   /// <summary> Data needed to score the game. </summary>
   struct ScoreData
@@ -129,6 +135,124 @@ private:
   /// <summary> Internal memory used to compute scores. </summary>
   mutable ScoreData m_scoreData;
 };
+
+
+struct Tile
+{
+  typedef Vector2<int> Position;
+  typedef std::vector<Tile> TileList;
+
+  Tile(Position center_, int x, int y)
+    : center(center_),
+      XEdgeLength(x),
+      YEdgeLength(y)
+  {}
+
+  Position center;
+  int XEdgeLength;
+  int YEdgeLength;
+
+  const bool operator()(const Position pos){ PositionIsWithin(pos); } // For remove_if
+
+  const bool PositionIsWithin(const Position pos)
+  {
+    return (pos.x < center.x + XEdgeLength/2 && pos.x >= center.x - XEdgeLength/2 &&
+        pos.y < center.y + YEdgeLength/2 && pos.y >= center.y - YEdgeLength/2);
+  }
+
+  static void Tiles(const Voronoi& game, const int tilesPerSide, TileList *tiles)
+  {
+    assert(tiles->size() == 0);
+    assert(tilesPerSide > 0);
+    Position boardSize = game.GetBoardSize();
+
+    int xIncrement = boardSize.x/tilesPerSide;
+    int yIncrement = boardSize.x/tilesPerSide;
+
+    for(int x = xIncrement/2; x < boardSize.x; x+= xIncrement)
+    {
+      for(int y = yIncrement/2; y < boardSize.y; y+= yIncrement)
+      {
+        tiles->push_back(Tile(Position(x, y),xIncrement, yIncrement));
+      }
+    }
+  }
+
+  static void UnplayedTiles(const Voronoi& game, const int tilesPerSide, TileList *tiles)
+  {
+    Tiles(game, tilesPerSide, tiles);
+    RemovePlayedTiles(game, tiles);
+  }
+
+  static void RemovePlayedTiles(const Voronoi& game, TileList *tiles)
+  {
+    Voronoi::StoneList playedStones = game.Played();
+    
+    for(unsigned int i = 0; i < tiles->size(); i++)
+    {
+      Tile c = (*tiles)[i];
+      for(unsigned int j = 0; j < playedStones.size(); j++)
+      {
+        Position p = playedStones[j].pos;
+        if(c.PositionIsWithin(p))
+        {
+          tiles->erase(tiles->begin() + i); //Remove tile from tile list;
+          i--;
+          break;
+        }
+      }
+    }
+  }
+};
+
+
+static int SquaredDistance(Vector2<int> p1, Vector2<int> p2)
+{
+	int x = std::abs(p2.x-p1.x);
+	int y = std::abs(p2.y-p1.y);
+	return x*x + y*y;
+}
+	
+static void ScoreNearestStone(const Voronoi::StoneList& stoneList, const std::vector<Tile>& tileList, Voronoi::ScoreList* scores)
+{
+  int bestDistance = std::numeric_limits<int>::max();
+  int playerIndex = -1;
+  for(int i=0;i<tileList.size();++i)
+  {
+    Tile tile = tileList[i];
+    for(int j=0;j<stoneList.size();++j)
+    {
+      Stone stone = stoneList[j];
+      int distance = SquaredDistance(stone.pos,tile.center);
+      if(bestDistance > distance)
+      {
+	bestDistance = distance;
+	playerIndex = stone.player;
+      }
+    }
+    assert(playerIndex >=0);
+    assert(playerIndex < scores->size());
+    scores->at(playerIndex) += 1.0f;
+  }
+}
+
+
+static void NaiveScore(const Voronoi& game, Voronoi::ScoreList* scores)
+{
+  Voronoi::StoneList stones = game.Played();
+  Voronoi::Board board = game.GetBoard();
+  int tilesPerSide = 50;
+  Tile::TileList tileList;
+  Tile::Tiles(game, tilesPerSide,&tileList);
+  scores->clear();
+  for(unsigned int i = 0; i < game.NumPlayers(); i++)
+  {
+    scores->push_back(0.0f);
+  }
+
+  ScoreNearestStone(stones, tileList, scores);
+}
+
 
 }
 using namespace voronoi;
