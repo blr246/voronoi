@@ -299,7 +299,7 @@ struct SegmentAngleSort
 const FloatType kVecEqSqBound = static_cast<FloatType>(1.0e-5);
 
 
-bool Voronoi::Scores(ScoreList* scores) const
+bool Voronoi::FortuneScores(ScoreList* scores) const
 {
   // Initialize scores.
   scores->assign(m_players, 0);
@@ -621,15 +621,18 @@ bool Voronoi::Scores(ScoreList* scores) const
   }
   return true;
 }
-/*
+
 bool Voronoi::Scores(ScoreList* scores) const
 {
   bool FortuneScoringSucceeded = FortuneScores(scores);
-  if(FortuneScoringSucceeded)
-    return true
-  else
-    NaiveScore(this, scores);
-}*/
+  if(FortuneScoringSucceeded){
+    return true;
+  }else
+  {
+    std::cout << "Scoring failed, falling back to naive scoring." << std::endl;
+    NaiveScore(*this, scores);
+  }
+}
 
 }
 }

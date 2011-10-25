@@ -249,8 +249,7 @@ TEST(GreedyPlayer, VersusRandomPlayer)
       gp.Play(game);
     }
     Voronoi::ScoreList scores;
-    //game.Scores(&scores);
-    NaiveScore(game, &scores);
+    game.Scores(&scores);
     float greedyScore = scores[1];
     float randomScore = scores[0];
     EXPECT_TRUE(greedyScore > randomScore);
@@ -266,8 +265,7 @@ TEST(GreedyPlayer, VersusRandomPlayer)
       rp.Play(game);
     }
     Voronoi::ScoreList scores;
-    //game.Scores(&scores);
-    NaiveScore(game, &scores);
+    game.Scores(&scores);
     float greedyScore = scores[0];
     float randomScore = scores[1];
     EXPECT_TRUE(greedyScore > randomScore);
@@ -294,8 +292,7 @@ TEST(GreedyPlayer, VersusDefensivePlayer)
       gp.Play(game);
     }
     Voronoi::ScoreList scores;
-    //game.Scores(&scores);
-    NaiveScore(game, &scores);
+    game.Scores(&scores);
     float greedyScore = scores[1];
     float defensiveScore = scores[0];
     EXPECT_TRUE(greedyScore > defensiveScore);//Not sure what the actual result will be --Rafi
@@ -310,8 +307,7 @@ TEST(GreedyPlayer, VersusDefensivePlayer)
       DefensivePlayer dp.Play(game);
     }
     Voronoi::ScoreList scores;
-    //game.Scores(&scores);
-    NaiveScore(game, &scores);
+    game.Scores(&scores);
     float greedyScore = scores[0];
     float defensiveScore = scores[1];
     EXPECT_TRUE(greedyScore > defensiveScore);// Not sure what the actual result will be --Rafi

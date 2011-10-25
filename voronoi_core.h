@@ -74,6 +74,7 @@ public:
 
   /// <summary> Compute the score for all players. </summary>
   bool Scores(ScoreList* scores) const;
+  bool FortuneScores(ScoreList* scores) const;
 
   /// <summary> Get number of players. </summary>
   inline int NumPlayers() const
