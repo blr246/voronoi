@@ -38,6 +38,9 @@ static const AxisAlignedBox<FloatType>& BoundingBox()
 //  static AxisAlignedBox<FloatType>
 //    s_bounds(Vector2<FloatType>(static_cast<FloatType>(-0.2), static_cast<FloatType>(-0.2)),
 //             Vector2<FloatType>(static_cast<FloatType>(1.2), static_cast<FloatType>(1.2)));
+//  static AxisAlignedBox<Voronoi::FloatType>
+//    s_bounds(Vector2<FloatType>(static_cast<FloatType>(-0.501f), static_cast<FloatType>(-0.501f)),
+//             Vector2<FloatType>(static_cast<FloatType>( 0.501f), static_cast<FloatType>( 0.501f)));
   static AxisAlignedBox<Voronoi::FloatType>
     s_bounds(Vector2<FloatType>(static_cast<FloatType>(0), static_cast<FloatType>(0)),
              Vector2<FloatType>(static_cast<FloatType>(1), static_cast<FloatType>(1)));
@@ -49,7 +52,7 @@ void ProcessEvent(ScoringProcessParams* params);
 void FrontInsert(const StoneType& stone, ScoringProcessParams* params);
 
 inline bool Circle(const Point& a, const Point& b, const Point& c, double *x, Point *o);
-void CheckCircleEvent(const double& x0, Arc *i);
+void CheckCircleEvent(const double& x0, Arc *i, ScoringProcessParams* params);
 
 inline bool Intersect(const Point& p, const Arc* i, Point *result);
 const Point Intersection(const Point& p0, const Point& p1, const double& l);
@@ -70,6 +73,10 @@ void VoronoiScoring::Scores(const Voronoi::StoneNormalizedList& stones,
   params->output.clear();
   delete params->root;
   params->root = NULL;
+
+  const int numStones = static_cast<int>(stones.size());
+  params->events.reserve(numStones * numStones);
+  params->output.reserve(numStones * numStones * numStones);
 
   std::vector<StonePriorityRec>& stonesQueue = params->stonesQueue;
   std::vector<EventPriorityRec>& eventsQueue = params->eventsQueue;
@@ -164,11 +171,11 @@ void ProcessEvent(ScoringProcessParams* params)
     // Recheck circle events on either side of p:
     if (a->prev)
     {
-      CheckCircleEvent(e->x, a->prev);
+      CheckCircleEvent(e->x, a->prev, params);
     }
     if (a->next)
     {
-      CheckCircleEvent(e->x, a->next);
+      CheckCircleEvent(e->x, a->next, params);
     }
   }
 }
@@ -215,9 +222,9 @@ void FrontInsert(const StoneType& stone, ScoringProcessParams* params)
       i->next->s0 = i->s1 = &output.back();
 
       // Check for new circle events around the new arc:
-      CheckCircleEvent(p.x, i);
-      CheckCircleEvent(p.x, i->prev);
-      CheckCircleEvent(p.x, i->next);
+      CheckCircleEvent(p.x, i, params);
+      CheckCircleEvent(p.x, i->prev, params);
+      CheckCircleEvent(p.x, i->next, params);
 
       return;
     }
@@ -303,7 +310,7 @@ inline bool Intersect(const Point& p, const Arc* i, Point *result)
      return false;
    }
 
-   double a, b;
+   double a = 0.0, b = 0.0;
    if (i->prev) // Get the intersection of i->prev, i.
    {
       a = Intersection(i->prev->p, i->p, p.x).y;
@@ -353,7 +360,7 @@ const Point Intersection(const Point& p0, const Point& p1, const double& l)
     const double c = (((p0.y*p0.y) + (p0.x*p0.x) - (l*l)) / z0) -
                      (((p1.y*p1.y) + (p1.x*p1.x) - (l*l)) / z1);
 
-    res.y = (-b - sqrt(b*b - 4*a*c)) / (2*a);
+    res.y = ( -b - sqrt(b*b - 4*a*c) ) / (2*a);
   }
   // Plug back into one of the parabola equations.
   res.x = (p.x*p.x + (p.y-res.y)*(p.y-res.y) - l*l)/(2*p.x-2*l);

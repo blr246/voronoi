@@ -113,21 +113,6 @@ public:
   }
 
 private:
-  /// <summary> Data needed to score the game. </summary>
-  struct ScoreData
-  {
-    ScoreData(const int players);
-    inline void Reset()
-    {
-      candidateEdges.clear();
-      vertices.clear();
-      assert(4 == boardEdges.size());
-    }
-    std::vector<Line<FloatType> > candidateEdges;
-    std::vector<Line<FloatType> > boardEdges;
-    std::vector<Vector2<FloatType> > vertices;
-  };
-
   /// <summary> Number of players. </summary>
   int m_players;
   /// <summary> Number of stones per player. </summary>
@@ -138,8 +123,6 @@ private:
   StoneNormalizedList m_stonesPlayedNorm;
   /// <summary> The game play area in world coordinates. </summary>
   Board m_board;
-  /// <summary> Internal memory used to compute scores. </summary>
-  mutable ScoreData m_scoreData;
 };
 
 

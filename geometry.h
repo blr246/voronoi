@@ -114,6 +114,20 @@ struct Segment
   Vector2<NumericType> p1;
 };
 
+template <typename NumericType>
+inline bool operator==(const Segment<NumericType>& lhs, const Segment<NumericType>& rhs)
+{
+  // Check cris-cross, too.
+  return ((lhs.p0 == rhs.p0) && (lhs.p1 == rhs.p1)) ||
+         ((lhs.p0 == rhs.p1) && (lhs.p1 == rhs.p0));
+}
+
+template <typename NumericType>
+inline bool operator!=(const Segment<NumericType>& lhs, const Segment<NumericType>& rhs)
+{
+  return !(lhs == rhs);
+}
+
 /// <summary> A segment defined by two points with direction. </summary>
 template <typename NumericType>
 struct DirectedSegment
