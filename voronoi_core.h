@@ -242,8 +242,8 @@ static void ScoreNearestStone(const Voronoi::StoneList& stoneList, const std::ve
       int distance = SquaredDistance(stone.pos,tile.center);
       if(bestDistance > distance)
       {
-	bestDistance = distance;
-	playerIndex = stone.player;
+        bestDistance = distance;
+        playerIndex = stone.player;
       }
     }
     assert(playerIndex >=0);
