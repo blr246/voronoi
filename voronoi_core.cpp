@@ -17,7 +17,7 @@ namespace voronoi
 {
 
 typedef Voronoi::FloatType FloatType;
-
+const FloatType kVecEqSqBound = static_cast<FloatType>(1.0e-3);
 namespace detail
 {
 /// <summary> Test that a stone has the same position as a base stone. </summary>
@@ -300,8 +300,6 @@ struct SegmentAngleSort
   }
 };
 }
-
-const FloatType kVecEqSqBound = static_cast<FloatType>(1.0e-3);
 
 
 bool Voronoi::FortuneScores(ScoreList* scores) const
