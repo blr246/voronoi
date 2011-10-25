@@ -3,12 +3,25 @@
 #include "player.h"
 #include "voronoi_core.h"
 #include "geometry.h"
+#include "util.h"
 #include "gtest/gtest.h"
 #include <math.h>
 
 namespace _hps_voronoi_player_gtest_h_
 {
   using namespace hps::voronoi;
+
+TEST(Parser,BoardStates)
+{
+  std::string buffer = "BOARD STATE\n0: 300 400\n1: 400 500\n0: 600 700\n1: 800 900\n0: 450 600\n1: 900 678\n\nEnter New position \"X Y\":";
+  std::string end = "Enter New position \"X Y\":";
+  std::string start = "BOARD STATE";
+  Voronoi::StoneList stoneList;
+  Parser::BoardStates(buffer,start, end, &stoneList);
+  EXPECT_EQ(6,stoneList.size());
+  EXPECT_EQ(800,stoneList.at(3).pos.x);
+  EXPECT_EQ(900,stoneList.at(3).pos.y);
+}
 
 TEST(RandomPlayer, Play)
 {
