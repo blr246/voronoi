@@ -76,6 +76,19 @@ public:
     return m_players;
   }
 
+  /// <summary> Get current player. </summary>
+  inline int CurrentPlayer() const
+  {
+    StoneList played = Played();
+    if(played.size() == 0)
+    {
+      return 0;
+    }else{
+      int lastPlayer = Played().back().player;
+      return (lastPlayer + 1) % m_players;
+    }
+  }
+
   /// <summary> Get initial number of stones per player. </summary>
   inline int StonesPerPlayer() const
   {

@@ -21,8 +21,10 @@ struct RandomPlayer{
 
   static void Play(Voronoi& game)
   {
+    //std::cout << "Random player playing..." << std::endl();
     bool moveWasValid = false;
     Stone move;
+    move.player = game.CurrentPlayer();
     while(!moveWasValid){
       RandomPosition(game, &move);
       moveWasValid = game.Play(move);
@@ -32,6 +34,8 @@ struct RandomPlayer{
 
 struct Tile
 {
+  typedef std::vector<Tile> TileList;
+
   Tile(Position center_, int x, int y)
     : center(center_),
       XEdgeLength(x),
@@ -50,10 +54,7 @@ struct Tile
         pos.y < center.y + YEdgeLength/2 && pos.y >= center.y - YEdgeLength/2);
   }
 
-};
-
-struct GreedyPlayer{
-  static void Tiles(const Voronoi& game, const int tilesPerSide, std::vector<Tile> *tiles)
+  static void Tiles(const Voronoi& game, const int tilesPerSide, TileList *tiles)
   {
     assert(tiles->size() == 0);
     assert(tilesPerSide > 0);
@@ -71,13 +72,13 @@ struct GreedyPlayer{
     }
   }
 
-  static void UnplayedTiles(const Voronoi& game, const int tilesPerSide, std::vector<Tile> *tiles)
+  static void UnplayedTiles(const Voronoi& game, const int tilesPerSide, TileList *tiles)
   {
     Tiles(game, tilesPerSide, tiles);
     RemovePlayedTiles(game, tiles);
   }
 
-  static void RemovePlayedTiles(const Voronoi& game, std::vector<Tile> *tiles)
+  static void RemovePlayedTiles(const Voronoi& game, TileList *tiles)
   {
     Voronoi::StoneList playedStones = game.Played();
     
@@ -96,6 +97,37 @@ struct GreedyPlayer{
       }
     }
   }
+};
+
+struct GreedyPlayer{
+  static void Play(Voronoi& game)
+  {
+    //std::cout << "Greedy player playing..." << std::endl();
+    Tile::TileList tiles;
+    Tile::UnplayedTiles(game, 20, &tiles);
+    Tile::TileList::iterator bestTileIt;
+    float bestScore = 0;// -infinity?
+    Stone stone;
+    stone.player = game.CurrentPlayer();
+
+    for(Tile::TileList::iterator i = tiles.begin(); i < tiles.end(); i++)
+    {
+      //std::cout << ".";
+      stone.pos = i->center;
+      game.Play(stone);
+      float curScore = GameScore(game);
+      game.Undo();
+      if(curScore >= bestScore)
+      {
+        bestTileIt = i;
+        bestScore = curScore;
+      }
+    }
+    //std::cout << std::endl();
+
+    stone.pos = bestTileIt->center;
+    game.Play(stone);
+  }
 
   static float GameScore(const Voronoi& game)
   {
@@ -108,7 +140,6 @@ struct GreedyPlayer{
     // Defensibility should correspond to how many polygons you own or how spread out your area is.
     return scores[lastPlayer]; 
   }
-
 };
 
 }

@@ -26,7 +26,7 @@ TEST(RandomPlayer, Play)
   EXPECT_EQ(2, game.Played().size());
 }
 
-TEST(GreedyPlayer, Tiles)
+TEST(Tile, Tiles)
 {
   
   enum { Players = 2, };
@@ -36,14 +36,14 @@ TEST(GreedyPlayer, Tiles)
   Voronoi game(Players, StonesPerPlayer, Voronoi::BoardSize(BoardDim, BoardDim));
 
   std::vector<Tile> tiles;
-  GreedyPlayer::Tiles(game, 1, &tiles);
+  Tile::Tiles(game, 1, &tiles);
 
   ASSERT_EQ(static_cast<float>(tiles.size()), pow(1.0f, 2.0f));
   EXPECT_EQ(tiles[0].center.x, BoardDim/2);
   EXPECT_EQ(tiles[0].center.y, BoardDim/2);
 
   tiles.clear();
-  GreedyPlayer::Tiles(game, 4, &tiles);
+  Tile::Tiles(game, 4, &tiles);
 
   ASSERT_EQ(static_cast<float>(tiles.size()), pow(4.0f, 2.0f));
   EXPECT_EQ(tiles[0].center.x, 125);
@@ -60,7 +60,7 @@ TEST(GreedyPlayer, UnplayedTiles)
   Voronoi game(Players, StonesPerPlayer, Voronoi::BoardSize(BoardDim, BoardDim));
 
   std::vector<Tile> tiles;
-  GreedyPlayer::UnplayedTiles(game, 4, &tiles);
+  Tile::UnplayedTiles(game, 4, &tiles);
 
   int startingSize = tiles.size();
   ASSERT_EQ(static_cast<float>(startingSize), pow(4.0f, 2.0f));
@@ -68,7 +68,7 @@ TEST(GreedyPlayer, UnplayedTiles)
   RandomPlayer::Play(game);
 
   tiles.clear();
-  GreedyPlayer::UnplayedTiles(game, 4, &tiles);
+  Tile::UnplayedTiles(game, 4, &tiles);
 
   ASSERT_EQ(startingSize-1, tiles.size());
 }
@@ -87,6 +87,38 @@ TEST(Tile, PositionIsWithin)
   EXPECT_TRUE(two.PositionIsWithin(Position(250, 250)));
 }
 
+TEST(GreedyPlayer, Play)
+{
+  enum { Players = 2, };
+  enum { StonesPerPlayer = 10, };
+  enum { BoardDim = 1000, };
+  
+  for(int i = 0; i < 0; i++)
+  {
+    Voronoi game(Players, StonesPerPlayer, Voronoi::BoardSize(BoardDim, BoardDim));
+    for(int i = 0; i < 10; i++)
+    {
+      RandomPlayer::Play(game);
+      GreedyPlayer::Play(game);
+    }
+    Voronoi::ScoreList scores;
+    game.Scores(&scores);
+    EXPECT_TRUE(scores[0] < scores[1]);
+  }
+  for(int i = 0; i < 0; i++)
+  {
+    Voronoi game(Players, StonesPerPlayer, Voronoi::BoardSize(BoardDim, BoardDim));
+    for(int i = 0; i < 10; i++)
+    {
+      GreedyPlayer::Play(game);
+      RandomPlayer::Play(game);
+    }
+    Voronoi::ScoreList scores;
+    game.Scores(&scores);
+    EXPECT_TRUE(scores[0] < scores[1]);
+  }
 }
+}
+
 
 #endif //_HPS_VORONOI_PLAYER_H_
