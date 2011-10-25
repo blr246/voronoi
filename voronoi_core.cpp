@@ -479,7 +479,7 @@ bool Voronoi::Scores(ScoreList* scores) const
       assert((linkedSegmentCountBefore + 1) == static_cast<int>(linkedSegments.size()));
       typedef LinkedSegmentsQueue::const_iterator LinkedSegmentIter;
       const Segment2<FloatType> frontLink = linkedSegments.front();
-      typedef SegmentQueue::const_iterator EdgeIterator;
+      typedef SegmentQueue::iterator EdgeIterator;
       bool linkExtended;
       do
       {
@@ -534,7 +534,7 @@ bool Voronoi::Scores(ScoreList* scores) const
     std::sort(linkedSegments.begin(), linkedSegments.end(), detail::SegmentAngleSort<FloatType>());
     // Create closed polygons.
     {
-      typedef LinkedSegmentsQueue::const_iterator LinkedSegIter;
+      typedef LinkedSegmentsQueue::iterator LinkedSegIter;
       const Vector2<FloatType>* firstPt = &linkedSegments.front().p0;
       LinkedSegIter curSeg = linkedSegments.begin();
       // Until the shape is closed...
