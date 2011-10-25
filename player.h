@@ -4,6 +4,7 @@
 #include "voronoi_core.h"
 #include <vector>
 #include <algorithm>
+#include "rand_bound.h"
 
 namespace hps
 {
@@ -16,7 +17,8 @@ struct Player
   virtual void Play(Voronoi& game) = 0;
 };
 
-struct RandomPlayer{
+struct RandomPlayer: public Player
+{
   static void RandomPosition(const Voronoi& game, Stone* move)
   {
     Position boardSize = game.GetBoardSize();
@@ -24,7 +26,7 @@ struct RandomPlayer{
     move->pos.y = math::RandBound(boardSize.y);
   }
 
-  static void Play(Voronoi& game)
+  void Play(Voronoi& game)
   {
     //std::cout << "Random player playing..." << std::endl();
     bool moveWasValid = false;
@@ -38,10 +40,10 @@ struct RandomPlayer{
 };
 
 
-struct GreedyPlayer{
-  GreedyPlayer(Voronoi& game_, int tilesPerSide)
-    :tiles(),
-    game(game_)
+struct GreedyPlayer: public Player
+{
+  GreedyPlayer(Voronoi& game, int tilesPerSide)
+    :tiles()
   {
     Tile::UnplayedTiles(game, tilesPerSide, &tiles);
   }
@@ -77,7 +79,7 @@ struct GreedyPlayer{
 
     for(Tile::TileList::iterator i = tiles.begin(); i < tiles.end(); i++)
     {
-      std::cout << ".";
+      //std::cout << ".";
       stone.pos = i->center;
       game.Play(stone);
       float curScore = GameScore(game);
@@ -88,7 +90,7 @@ struct GreedyPlayer{
         bestScore = curScore;
       }
     }
-    std::cout << std::endl;
+    //std::cout << std::endl;
 
     stone.pos = bestTileIt->center;
     game.Play(stone);
@@ -109,11 +111,10 @@ struct GreedyPlayer{
   }
 
   Tile::TileList tiles;
-  Voronoi& game;
 };
 
 
-struct DefensivePlayer
+struct DefensivePlayer: public Player
 {
   
   void Play(Voronoi& game)
