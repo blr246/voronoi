@@ -93,7 +93,7 @@ TEST(GreedyPlayer, Play)
   enum { StonesPerPlayer = 10, };
   enum { BoardDim = 1000, };
   
-  for(int i = 0; i < 0; i++)
+  for(int i = 0; i < 10; i++)
   {
     Voronoi game(Players, StonesPerPlayer, Voronoi::BoardSize(BoardDim, BoardDim));
     for(int i = 0; i < 10; i++)
@@ -105,7 +105,7 @@ TEST(GreedyPlayer, Play)
     game.Scores(&scores);
     EXPECT_TRUE(scores[0] < scores[1]);
   }
-  for(int i = 0; i < 0; i++)
+  for(int i = 0; i < 10; i++)
   {
     Voronoi game(Players, StonesPerPlayer, Voronoi::BoardSize(BoardDim, BoardDim));
     for(int i = 0; i < 10; i++)

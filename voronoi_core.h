@@ -2,6 +2,7 @@
 #define _HPS_VORONOI_VORONOI_CORE_H_
 #include "geometry.h"
 #include <vector>
+#include <limits>
 
 namespace hps
 {
@@ -100,6 +101,11 @@ public:
     return m_board.maxs;
   }
 
+  inline Board GetBoard() const
+  {
+    return m_board;
+  }
+
 private:
   /// <summary> Data needed to score the game. </summary>
   struct ScoreData
@@ -129,6 +135,53 @@ private:
   /// <summary> Internal memory used to compute scores. </summary>
   mutable ScoreData m_scoreData;
 };
+
+static int SquaredDistance(Vector2<int> p1, Vector2<int> p2)
+{
+	int x = std::abs(p2.x-p1.x);
+	int y = std::abs(p2.y-p1.y);
+	return x*x + y*y;
+}
+	
+static void ScoreNearestStone(const Voronoi::StoneList& stoneList, const AxisAlignedBox<int>& box, Voronoi::ScoreList* scores)
+{
+	for(int i=box.mins.x;i<box.maxs.x;++i)
+	{
+		for(int j=box.mins.y;box.maxs.y;++i)
+		{	
+			int bestDistance = std::numeric_limits<int>::max();
+			int playerIndex = -1;
+			for(int k=0;k<stoneList.size();++k)
+			{
+				Stone stone = stoneList[k];
+				int distance = SquaredDistance(stone.pos,Vector2<int>(i,j));
+				if(bestDistance > distance)
+				{
+					bestDistance = distance;
+					playerIndex = stone.player;
+				}
+			}
+			assert(playerIndex >=0);
+      assert(playerIndex < scores->size());
+			scores->at(playerIndex) += 1.0f;
+		}
+	}
+}
+
+static void NaiveScore(const Voronoi& game, Voronoi::ScoreList* scores)
+{
+  Voronoi::StoneList stones = game.Played();
+  Voronoi::Board board = game.GetBoard();
+
+  scores->clear();
+  for(unsigned int i = 0; i < game.NumPlayers(); i++)
+  {
+    scores->push_back(0.0f);
+  }
+
+  ScoreNearestStone(stones, board, scores);
+}
+
 
 }
 using namespace voronoi;

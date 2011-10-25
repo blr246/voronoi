@@ -102,7 +102,7 @@ struct Tile
 struct GreedyPlayer{
   static void Play(Voronoi& game)
   {
-    //std::cout << "Greedy player playing..." << std::endl();
+    std::cout << "Greedy player playing..." << std::endl;
     Tile::TileList tiles;
     Tile::UnplayedTiles(game, 20, &tiles);
     Tile::TileList::iterator bestTileIt;
@@ -112,7 +112,7 @@ struct GreedyPlayer{
 
     for(Tile::TileList::iterator i = tiles.begin(); i < tiles.end(); i++)
     {
-      //std::cout << ".";
+      std::cout << ".";
       stone.pos = i->center;
       game.Play(stone);
       float curScore = GameScore(game);
@@ -123,7 +123,7 @@ struct GreedyPlayer{
         bestScore = curScore;
       }
     }
-    //std::cout << std::endl();
+    std::cout << std::endl;
 
     stone.pos = bestTileIt->center;
     game.Play(stone);
@@ -134,7 +134,8 @@ struct GreedyPlayer{
     Voronoi::StoneList playedStones= game.Played();
     int lastPlayer = playedStones.back().player;
     Voronoi::ScoreList scores;
-    game.Scores(&scores);
+    //game.Scores(&scores);
+    NaiveScore(game, &scores);
 
     // This is where a greedy heuristic goes, we want score plus some notion of defensibility,
     // Defensibility should correspond to how many polygons you own or how spread out your area is.
