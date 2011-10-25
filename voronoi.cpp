@@ -61,7 +61,7 @@ void writeSocket ( int sockfd, char buffer[1024] ) {
     //bzero(buffer,1024);
     memset( buffer, 0, sizeof(char)*1024);
     
-    hps::voronoi::Player* player = new hps::voronoi::GreedyPlayer(*game,8);
+    hps::voronoi::Player* player = new hps::voronoi::GreedyPlayer(*game,30);
     player->Play(*game);
     std::string move = game->Compute();
     //std::cout << "returned from player..." <<std::endl;

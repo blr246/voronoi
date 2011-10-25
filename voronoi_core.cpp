@@ -87,6 +87,7 @@ bool Voronoi::Play(const Stone& stone)
   {
     return false;
   }
+  assert(stone.player == CurrentPlayer());
   // Stone within bounds.
   assert((stone.pos.x >= m_board.mins.x) && (stone.pos.y >= m_board.mins.y));
   assert((stone.pos.x <= m_board.maxs.x) && (stone.pos.y <= m_board.maxs.y));
