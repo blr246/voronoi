@@ -38,7 +38,10 @@ Voronoi::Voronoi(const int players, const int stonesPerPlayer,
   m_stonesPerPlayer(stonesPerPlayer),
   m_stonesPlayed(),
   m_stonesPlayedNorm(),
-  m_board(Vector2<int>(0, 0), Vector2<int>(boardSize.x, boardSize.y))
+  m_board(Vector2<int>(0, 0), Vector2<int>(boardSize.x, boardSize.y)),
+  m_boardNorm(Vector2<FloatType>(0, 0),
+              Vector2<FloatType>(static_cast<FloatType>(boardSize.x),
+                                 static_cast<FloatType>(boardSize.y)))
 {}
 
 void Voronoi::InitBoard(std::string buffer, std::string start, std::string end)
@@ -85,11 +88,13 @@ bool Voronoi::Play(const Stone& stone)
   assert((stone.pos.x >= m_board.mins.x) && (stone.pos.y >= m_board.mins.y));
   assert((stone.pos.x <= m_board.maxs.x) && (stone.pos.y <= m_board.maxs.y));
   // Push the stone and the normalized stone.
-  const int dx = m_board.maxs.x - m_board.mins.x;
-  const int dy = m_board.maxs.y - m_board.mins.y;
+  const int invScaleX = 1;
+  const int invScaleY = 1;
+  //const int dx = m_board.maxs.x - m_board.mins.x;
+  //const int dy = m_board.maxs.y - m_board.mins.y;
   m_stonesPlayed.push_back(stone);
-  const StoneNormalized::Position posNorm(stone.pos.x / static_cast<FloatType>(dx),
-                                          stone.pos.y / static_cast<FloatType>(dy));
+  const StoneNormalized::Position posNorm(stone.pos.x / static_cast<FloatType>(invScaleX),
+                                          stone.pos.y / static_cast<FloatType>(invScaleY));
   m_stonesPlayedNorm.push_back(StoneNormalized(stone.player, posNorm));
   assert(m_stonesPlayed.size() == m_stonesPlayedNorm.size());
   return true;
@@ -143,7 +148,7 @@ struct BoardEdgeHelper
     const Vector2<NumericType> edgePtToP = p - edge->p0;
     // See if the point is along the edge.
     const NumericType dotAlongEdgeTest = Vector2Dot(edgePtToP, Vector2Rotate90(edge->dir));
-    if (fabs(dotAlongEdgeTest) < static_cast<NumericType>(1.0e-6))
+    if (fabs(dotAlongEdgeTest) < static_cast<NumericType>(kVecEqSqBound))
     {
       return true;
     }
@@ -296,7 +301,7 @@ struct SegmentAngleSort
 };
 }
 
-const FloatType kVecEqSqBound = static_cast<FloatType>(1.0e-5);
+const FloatType kVecEqSqBound = static_cast<FloatType>(1.0e-3);
 
 
 bool Voronoi::FortuneScores(ScoreList* scores) const
@@ -315,18 +320,13 @@ bool Voronoi::FortuneScores(ScoreList* scores) const
     return true;;
   }
 
-  AxisAlignedBox<FloatType> boardNorm(Vector2<FloatType>(0, 0), Vector2<FloatType>(1, 1));
-  detail::BoardEdgeHelper<FloatType> boardEdgeHelper(boardNorm);
-  const int dx = m_board.maxs.x - m_board.mins.x;
-  const int dy = m_board.maxs.y - m_board.mins.y;
-  const Vector2<FloatType> halfMinEdge(1 / static_cast<FloatType>(2 * dx),
-                                       1 / static_cast<FloatType>(2 * dy));
-  const FloatType halfMinEdgeLenSq = Vector2Length(halfMinEdge);
+  detail::BoardEdgeHelper<FloatType> boardEdgeHelper(m_boardNorm);
+  const FloatType halfMinEdgeLenSq = 0.2f;
   const detail::SegmentMinLengthSqFilter<FloatType> minLengthSqFilter(halfMinEdgeLenSq);
   const FloatType halfMinEdgeLen = sqrt(halfMinEdgeLenSq);
   const Vector2<FloatType> halfMinEdgeLenVec(halfMinEdgeLen, halfMinEdgeLen);
-  AxisAlignedBox<FloatType> boardNormNoEdge(boardNorm.mins + halfMinEdgeLenVec,
-                                            boardNorm.maxs - halfMinEdgeLenVec);
+  AxisAlignedBox<FloatType> boardNormNoEdge(m_boardNorm.mins + halfMinEdgeLenVec,
+                                            m_boardNorm.maxs - halfMinEdgeLenVec);
 
   // Run the legacy code to generate the Voronoi diagram.
   VoronoiDiagramGenerator diagram;
@@ -338,8 +338,9 @@ bool Voronoi::FortuneScores(ScoreList* scores) const
     xCoords[stoneIdx] = m_stonesPlayedNorm[stoneIdx].pos.x;
     yCoords[stoneIdx] = m_stonesPlayedNorm[stoneIdx].pos.y;
   }
-  const bool res = diagram.generateVoronoi(&xCoords.front(), &yCoords.front(),
-                                           numStones, 0.0f, 1.0f, 0.0f, 1.0f);
+  const bool res = diagram.generateVoronoi(&xCoords.front(), &yCoords.front(), numStones,
+                                           m_boardNorm.mins.x, m_boardNorm.maxs.x,
+                                           m_boardNorm.mins.y, m_boardNorm.maxs.y);
   assert(res);
   // Extract the segments from the diagram assigned to each stone.
   diagram.resetIterator();
@@ -364,23 +365,6 @@ bool Voronoi::FortuneScores(ScoreList* scores) const
     // Filter min edge length squared based on board size.
     if (minLengthSqFilter(segment))
     {
-//      bool onEdge = false;
-//      // Don't take segments on the board edge. I'll handle those later.
-//      if (!AxisAlignedBoxContains(boardNormNoEdge, segment.p0) &&
-//          !AxisAlignedBoxContains(boardNormNoEdge, segment.p1))
-//      {
-//        const Vector2<FloatType> segDirDenorm = segment.p1 - segment.p0;
-//        const Vector2<FloatType> segDir = (1.0f / Vector2Length(segDirDenorm)) * segDirDenorm;
-//        // Do deep check.
-//        for (int edgeIdx = 0; edgeIdx < boardEdgeHelper.NumBoardEdges; ++edgeIdx)
-//        {
-//          if (fabs(Vector2Dot(segDir, boardEdgeHelper.boardEdges[0].dir)) < 1.0e-6f)
-//          {
-//            onEdge |= boardEdgeHelper.EdgeContainsPoint(0, segment.p0);
-//          }
-//        }
-//      }
-//      if (!onEdge)
       {
         // See if dup.
         EdgeList::const_iterator seg = std::find_if(edges.begin(), edges.end(),
@@ -617,7 +601,7 @@ bool Voronoi::FortuneScores(ScoreList* scores) const
     }
     normArea *= static_cast<FloatType>(0.5);
     // Add this polygon to the player score.
-    scores->at(stoneIdx % m_players) += normArea * boardTotalArea;
+    scores->at(stoneIdx % m_players) += normArea;// * boardTotalArea;
   }
   return true;
 }

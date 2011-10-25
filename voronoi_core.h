@@ -45,6 +45,8 @@ public:
   typedef Vector2<int> BoardSize;
   /// <summary> A Voronoi game board. </summary>
   typedef AxisAlignedBox<int> Board;
+  /// <summary> A Voronoi game board in normalized coordinates. </summary>
+  typedef AxisAlignedBox<FloatType> BoardNorm;
   /// <summary> A list of player scores. </summary>
   typedef std::vector<FloatType> ScoreList;
   /// <summary> A list of stones in play order. </summary>
@@ -136,6 +138,8 @@ private:
   StoneNormalizedList m_stonesPlayedNorm;
   /// <summary> The game play area in world coordinates. </summary>
   Board m_board;
+  /// <summary> The normalized game board. </summary>
+  BoardNorm m_boardNorm;
 };
 
 
