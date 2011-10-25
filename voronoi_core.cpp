@@ -563,8 +563,10 @@ bool Voronoi::Scores(ScoreList* scores) const
         }
       }
     }
-    assert(Vector2NearlyEqual(linkedSegments.back().p1, linkedSegments.front().p0,
-                              static_cast<FloatType>(1.0e-6)));
+//    if (!Vector2NearlyEqual(linkedSegments.back().p1, linkedSegments.front().p0, kVecEqSqBound))
+//    {
+//      return false;
+//    }
     // Gather the vertices and compute the area.
     FloatType normArea = 0;
     {
