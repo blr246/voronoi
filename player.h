@@ -39,19 +39,45 @@ struct RandomPlayer{
 
 
 struct GreedyPlayer{
-  static void Play(Voronoi& game)
+  GreedyPlayer(Voronoi& game_, int tilesPerSide)
+    :tiles(),
+    game(game_)
   {
-    //std::cout << "Greedy player playing..." << std::endl;
-    Tile::TileList tiles;
-    Tile::UnplayedTiles(game, 50, &tiles);
+    Tile::UnplayedTiles(game, tilesPerSide, &tiles);
+  }
+
+
+  void Play(Voronoi& game)
+  {
+    std::cout << "Greedy player playing..." << std::endl;
     Tile::TileList::iterator bestTileIt;
     float bestScore = 0;// -infinity?
     Stone stone;
     stone.player = game.CurrentPlayer();
 
+    //Play in the center first
+    if(game.Played().size() == 0)
+    {
+      Position p = game.GetBoardSize();
+      stone.pos = Position(p.x/2, p.y/2);
+      game.Play(stone);
+      return;
+    }
+
+    //Don't consider tiles that have been played in.
+    if(game.NumPlayers() == 2)
+    {
+      Position lastPlay = game.Played().back().pos;
+      Tile::RemoveTilesContaining(lastPlay, &tiles);
+    }else
+    {
+      std::cout << "Inefficient check of all tiles for plays" << std::endl;
+      Tile::RemovePlayedTiles(game, &tiles);
+    }
+
     for(Tile::TileList::iterator i = tiles.begin(); i < tiles.end(); i++)
     {
-      //std::cout << ".";
+      std::cout << ".";
       stone.pos = i->center;
       game.Play(stone);
       float curScore = GameScore(game);
@@ -62,10 +88,11 @@ struct GreedyPlayer{
         bestScore = curScore;
       }
     }
-    //std::cout << std::endl;
+    std::cout << std::endl;
 
     stone.pos = bestTileIt->center;
     game.Play(stone);
+    tiles.erase(bestTileIt); // Remove the played tile;
   }
 
   static float GameScore(const Voronoi& game)
@@ -80,6 +107,9 @@ struct GreedyPlayer{
     // Defensibility should correspond to how many polygons you own or how spread out your area is.
     return scores[lastPlayer]; 
   }
+
+  Tile::TileList tiles;
+  Voronoi& game;
 };
 
 
@@ -164,10 +194,6 @@ struct DefensivePlayer
     pos->x = pos->x/numVertices;
     pos->y = pos->y/numVertices;
   }
-  
-
-  
-
 };
 
 }

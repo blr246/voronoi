@@ -233,15 +233,17 @@ TEST(GreedyPlayer, VersusRandomPlayer)
   enum { Players = 2, };
   enum { StonesPerPlayer = 10, };
   enum { BoardDim = 1000, };
-  enum { NumGames = 10};
-  
+  enum { NumGames = 1};
+  enum { GreedyPlayerTiles = 30};
+
   for(int i = 0; i < NumGames; i++)
   {
     Voronoi game(Players, StonesPerPlayer, Voronoi::BoardSize(BoardDim, BoardDim));
+    GreedyPlayer gp(game, GreedyPlayerTiles);
     for(int i = 0; i < StonesPerPlayer; i++)
     {
       RandomPlayer::Play(game);
-      GreedyPlayer::Play(game);
+      gp.Play(game);
     }
     Voronoi::ScoreList scores;
     //game.Scores(&scores);
@@ -253,9 +255,10 @@ TEST(GreedyPlayer, VersusRandomPlayer)
   for(int i = 0; i < NumGames; i++)
   {
     Voronoi game(Players, StonesPerPlayer, Voronoi::BoardSize(BoardDim, BoardDim));
+    GreedyPlayer gp(game, GreedyPlayerTiles);
     for(int i = 0; i < StonesPerPlayer; i++)
     {
-      GreedyPlayer::Play(game);
+      gp.Play(game);
       RandomPlayer::Play(game);
     }
     Voronoi::ScoreList scores;
@@ -267,20 +270,23 @@ TEST(GreedyPlayer, VersusRandomPlayer)
   }
 }
 
+/*
 TEST(GreedyPlayer, VersusDefensivePlayer)
 {
   enum { Players = 2, };
   enum { StonesPerPlayer = 10, };
   enum { BoardDim = 1000, };
-  enum { NumGames = 10};
+  enum { NumGames = 1};
+  enum { GreedyPlayerTiles = 30};
   
   for(int i = 0; i < NumGames; i++)
   {
     Voronoi game(Players, StonesPerPlayer, Voronoi::BoardSize(BoardDim, BoardDim));
+    GreedyPlayer gp(game, GreedyPlayerTiles);
     for(int i = 0; i < StonesPerPlayer; i++)
     {
       DefensivePlayer::Play(game);
-      GreedyPlayer::Play(game);
+      gp.Play(game);
     }
     Voronoi::ScoreList scores;
     //game.Scores(&scores);
@@ -292,9 +298,10 @@ TEST(GreedyPlayer, VersusDefensivePlayer)
   for(int i = 0; i < NumGames; i++)
   {
     Voronoi game(Players, StonesPerPlayer, Voronoi::BoardSize(BoardDim, BoardDim));
+    GreedyPlayer gp(game, GreedyPlayerTiles);
     for(int i = 0; i < StonesPerPlayer; i++)
     {
-      GreedyPlayer::Play(game);
+      gp.Play(game);
       DefensivePlayer::Play(game);
     }
     Voronoi::ScoreList scores;
@@ -304,8 +311,7 @@ TEST(GreedyPlayer, VersusDefensivePlayer)
     float defensiveScore = scores[1];
     EXPECT_TRUE(greedyScore > defensiveScore);// Not sure what the actual result will be --Rafi
   }
-}
-
+}*/
 
 }
 

@@ -158,7 +158,7 @@ struct Tile
   int XEdgeLength;
   int YEdgeLength;
 
-  const bool operator()(const Position pos){ PositionIsWithin(pos); } // For remove_if
+  const bool operator()(const Position pos){ return PositionIsWithin(pos); } // For remove_if
 
   const bool PositionIsWithin(const Position pos)
   {
@@ -209,6 +209,21 @@ struct Tile
       }
     }
   }
+
+  static void RemoveTilesContaining(Position pos, TileList *tiles)
+  {
+    
+    for(unsigned int i = 0; i < tiles->size(); i++)
+    {
+      Tile c = (*tiles)[i];
+      if(c.PositionIsWithin(pos))
+      {
+        tiles->erase(tiles->begin() + i); //Remove tile from tile list;
+        i--;
+        break;
+      }
+    }
+  }
 };
 
 
@@ -223,10 +238,10 @@ static void ScoreNearestStone(const Voronoi::StoneList& stoneList, const std::ve
 {
   int bestDistance = std::numeric_limits<int>::max();
   int playerIndex = -1;
-  for(int i=0;i<tileList.size();++i)
+  for(unsigned int i=0;i<tileList.size();++i)
   {
     Tile tile = tileList[i];
-    for(int j=0;j<stoneList.size();++j)
+    for(unsigned int j=0;j<stoneList.size();++j)
     {
       Stone stone = stoneList[j];
       int distance = SquaredDistance(stone.pos,tile.center);
