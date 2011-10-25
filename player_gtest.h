@@ -228,16 +228,17 @@ TEST(Tile, PositionIsWithin)
   EXPECT_TRUE(two.PositionIsWithin(Position(250, 250)));
 }
 
-TEST(GreedyPlayer, Play)
+TEST(GreedyPlayer, VersusRandomPlayer)
 {
   enum { Players = 2, };
   enum { StonesPerPlayer = 10, };
   enum { BoardDim = 1000, };
+  enum { NumGames = 10};
   
-  for(int i = 0; i < 10; i++)
+  for(int i = 0; i < NumGames; i++)
   {
     Voronoi game(Players, StonesPerPlayer, Voronoi::BoardSize(BoardDim, BoardDim));
-    for(int i = 0; i < 10; i++)
+    for(int i = 0; i < StonesPerPlayer; i++)
     {
       RandomPlayer::Play(game);
       GreedyPlayer::Play(game);
@@ -245,12 +246,14 @@ TEST(GreedyPlayer, Play)
     Voronoi::ScoreList scores;
     //game.Scores(&scores);
     NaiveScore(game, &scores);
-    EXPECT_TRUE(scores[0] < scores[1]);
+    float greedyScore = scores[1];
+    float randomScore = scores[0];
+    EXPECT_TRUE(greedyScore > randomScore);
   }
-  for(int i = 0; i < 10; i++)
+  for(int i = 0; i < NumGames; i++)
   {
     Voronoi game(Players, StonesPerPlayer, Voronoi::BoardSize(BoardDim, BoardDim));
-    for(int i = 0; i < 10; i++)
+    for(int i = 0; i < StonesPerPlayer; i++)
     {
       GreedyPlayer::Play(game);
       RandomPlayer::Play(game);
@@ -258,7 +261,48 @@ TEST(GreedyPlayer, Play)
     Voronoi::ScoreList scores;
     //game.Scores(&scores);
     NaiveScore(game, &scores);
-    EXPECT_TRUE(scores[0] > scores[1]);
+    float greedyScore = scores[0];
+    float randomScore = scores[1];
+    EXPECT_TRUE(greedyScore > randomScore);
+  }
+}
+
+TEST(GreedyPlayer, VersusDefensivePlayer)
+{
+  enum { Players = 2, };
+  enum { StonesPerPlayer = 10, };
+  enum { BoardDim = 1000, };
+  enum { NumGames = 10};
+  
+  for(int i = 0; i < NumGames; i++)
+  {
+    Voronoi game(Players, StonesPerPlayer, Voronoi::BoardSize(BoardDim, BoardDim));
+    for(int i = 0; i < StonesPerPlayer; i++)
+    {
+      DefensivePlayer::Play(game);
+      GreedyPlayer::Play(game);
+    }
+    Voronoi::ScoreList scores;
+    //game.Scores(&scores);
+    NaiveScore(game, &scores);
+    float greedyScore = scores[1];
+    float defensiveScore = scores[0];
+    EXPECT_TRUE(greedyScore > defensiveScore);//Not sure what the actual result will be --Rafi
+  }
+  for(int i = 0; i < NumGames; i++)
+  {
+    Voronoi game(Players, StonesPerPlayer, Voronoi::BoardSize(BoardDim, BoardDim));
+    for(int i = 0; i < StonesPerPlayer; i++)
+    {
+      GreedyPlayer::Play(game);
+      DefensivePlayer::Play(game);
+    }
+    Voronoi::ScoreList scores;
+    //game.Scores(&scores);
+    NaiveScore(game, &scores);
+    float greedyScore = scores[0];
+    float defensiveScore = scores[1];
+    EXPECT_TRUE(greedyScore > defensiveScore);// Not sure what the actual result will be --Rafi
   }
 }
 
