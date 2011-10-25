@@ -83,24 +83,91 @@ struct GreedyPlayer{
 };
 
 
-class DefensivePlayer:public Player
+struct DefensivePlayer
 {
- private:
-  void ComputeCentroid(const Stone::Vertices& vertices, 
-		       Position* pos) const;
-
-  int GetIndexOfLargestAreaPolygon(const Voronoi::StoneList& stoneList, 
-				   const int currentPlayer) const;
-
-  Position GetCenterOfLargestPolygon(const Voronoi::StoneList& played,
-				     const int currentPlayer, int* stoneIdx) const;
- public:
-  DefensivePlayer()
-  {}
-  virtual void Play(Voronoi& game);
-  ~DefensivePlayer()
-  {}
   
+  void Play(Voronoi& game)
+  {
+    const Voronoi::StoneList stoneList = game.Played();
+    int currentPlayer = game.CurrentPlayer();
+    int stoneIdx = -1;
+    
+    Position pos = GetCenterOfLargestPolygon(stoneList,currentPlayer,&stoneIdx);
+    
+    assert(stoneIdx >=0 && stoneIdx < stoneList.size());
+    Stone stone = stoneList.at(stoneIdx);
+    stone.player = currentPlayer;
+    stone.pos = pos;
+    
+    game.Play(stone);
+  }
+ 
+  static Position GetCenterOfLargestPolygon(const Voronoi::StoneList& played,
+					    const int currentPlayer, int* stoneIdx)
+  {
+    ComputeIndexOfLargestAreaPolygon(played,currentPlayer,stoneIdx);
+    assert(*stoneIdx >=0 && *stoneIdx < played.size());
+    Stone stone = played.at(*stoneIdx);
+    
+    Position pos;
+    ComputeCentroid(stone.vertices,&pos);
+  
+    return pos;
+  }
+  
+  static void ComputeIndexOfLargestAreaPolygon(const Voronoi::StoneList& stoneList, 
+					      const int currentPlayer, int* stoneIdx)
+  {
+    float largestArea = std::numeric_limits<float>::min();
+    for(int i=0;i<stoneList.size();++i)
+    {
+      Stone stone = stoneList.at(i);
+      if(stone.player != currentPlayer)
+      {
+	float area = GetArea(stone.vertices);
+	if(largestArea < area)
+	{
+	  largestArea = area;
+	  *stoneIdx = i;
+	}
+      }
+    }
+  }
+  
+  static float GetArea(const Stone::Vertices& vertices)
+  {
+    int sum = 0;
+    int i=0;
+    for(;i<vertices.size()-1;++i)
+    {
+      Vector2<int> v1 = vertices.at(i);
+      Vector2<int> v2 = vertices.at(i+1);
+      //std::cout << "x1: " << v1.x << ", y2: " << v2.y << ", y1: " << v1.y << ", x2: " << v2.x <<std:: endl;
+      sum += (v1.x*v2.y - v1.y*v2.x);
+    }
+    Vector2<int> v1 = vertices.at(i);
+    Vector2<int> v2 = vertices.at(0);
+    // std::cout << "x1: " << v1.x << ", y2: " << v2.y << ", y1: " << v1.y << ", x2: " << v2.x << std::endl;
+    sum += (v1.x*v2.y - v1.y*v2.x);
+    float area = static_cast<float>(sum)/2;
+    return std::abs(area);
+  }
+
+  static void ComputeCentroid(const Stone::Vertices& vertices, Position* pos)
+  {
+    int numVertices = vertices.size();
+    for(int i=0;i<numVertices;++i)
+    {
+      pos->x += vertices.at(i).x;
+      pos->y += vertices.at(i).y;
+    }
+    pos->x = pos->x/numVertices;
+    pos->y = pos->y/numVertices;
+  }
+  
+
+  
+
 };
 
 }

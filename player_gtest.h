@@ -2,6 +2,7 @@
 #define _HPS_VORONOI_PLAYER_GTEST_H_
 #include "player.h"
 #include "voronoi_core.h"
+#include "geometry.h"
 #include "gtest/gtest.h"
 #include <math.h>
 
@@ -25,6 +26,133 @@ TEST(RandomPlayer, Play)
   RandomPlayer::Play(game);
   EXPECT_EQ(2, game.Played().size());
 }
+
+//Tests for Defensive Player.
+TEST(DefensivePlayer, ComputeCentroid)
+{
+  //Test Data.
+  Stone::Vertices vertices;
+  vertices.push_back(Position(300,400));
+  vertices.push_back(Position(284,390));
+  vertices.push_back(Position(934,79));
+  vertices.push_back(Position(56,90));
+  vertices.push_back(Position(80,64));
+
+  Position pos;
+  DefensivePlayer::ComputeCentroid(vertices,&pos);
+
+  EXPECT_EQ(pos.x,330);
+  EXPECT_EQ(pos.y,204);
+  
+}
+
+TEST(DefensivePlayer,GetArea)
+{
+  //Test Data.
+  Stone::Vertices vertices;
+  vertices.push_back(Position(4,10));
+  vertices.push_back(Position(9,7));
+  vertices.push_back(Position(11,2));
+  vertices.push_back(Position(2,2));
+
+  float area = DefensivePlayer::GetArea(vertices);
+  EXPECT_EQ(area,45.5);
+
+  vertices.clear();
+  vertices.push_back(Position(2,12));
+  vertices.push_back(Position(500,8));
+  vertices.push_back(Position(978,456));
+
+  area = DefensivePlayer::GetArea(vertices);
+  EXPECT_EQ(area,112508);
+
+  vertices.clear();
+  vertices.push_back(Position(20,11));
+  vertices.push_back(Position(34,5));
+  vertices.push_back(Position(145,4));
+
+  area = DefensivePlayer::GetArea(vertices);
+  EXPECT_EQ(area,326);
+}
+
+TEST(DefensivePlayer,ComputeIndexOfLargestAreaPolygon)
+{
+  Voronoi::StoneList stoneList;
+
+  //Stone 1
+  Stone stone1;
+  stone1.vertices.push_back(Position(4,10));
+  stone1.vertices.push_back(Position(9,7));
+  stone1.vertices.push_back(Position(11,2));
+  stone1.vertices.push_back(Position(2,2));
+  stone1.player = 1;
+
+  //Stone 2
+  Stone stone2;
+  stone2.vertices.push_back(Position(20,11));
+  stone2.vertices.push_back(Position(34,5));
+  stone2.vertices.push_back(Position(145,4));
+  //  stone2.vertices.push_back(Position(2,2));
+  stone2.player = 0;
+
+  //Stone 3
+  Stone stone3;
+  stone3.vertices.push_back(Position(2,12));
+  stone3.vertices.push_back(Position(500,8));
+  stone3.vertices.push_back(Position(978,456));
+  //  stone3.vertices.push_back(Position(2,2));
+  stone3.player=1;
+
+  stoneList.push_back(stone1);
+  stoneList.push_back(stone2);
+  stoneList.push_back(stone3);
+
+  int currentPlayer = 0;
+  int stoneIdx = -1;
+  DefensivePlayer::ComputeIndexOfLargestAreaPolygon(stoneList,currentPlayer,&stoneIdx);
+  EXPECT_EQ(stoneIdx,2);
+}
+
+TEST(DefensivePlayer,GetCenterOfLargestPolygon)
+{
+  Voronoi::StoneList stoneList;
+
+  //Stone 1
+  Stone stone1;
+  stone1.vertices.push_back(Position(4,10));
+  stone1.vertices.push_back(Position(9,7));
+  stone1.vertices.push_back(Position(11,2));
+  stone1.vertices.push_back(Position(2,2));
+  stone1.player = 1;
+
+  //Stone 2
+  Stone stone2;
+  stone2.vertices.push_back(Position(20,11));
+  stone2.vertices.push_back(Position(34,5));
+  stone2.vertices.push_back(Position(145,4));
+  //  stone2.vertices.push_back(Position(2,2));
+  stone2.player = 0;
+
+  //Stone 3
+  Stone stone3;
+  stone3.vertices.push_back(Position(2,12));
+  stone3.vertices.push_back(Position(500,8));
+  stone3.vertices.push_back(Position(978,456));
+  //  stone3.vertices.push_back(Position(2,2));
+  stone3.player=1;
+
+  stoneList.push_back(stone1);
+  stoneList.push_back(stone2);
+  stoneList.push_back(stone3);
+
+  int currentPlayer = 0;
+  int stoneIdx = -1;
+  Position pos = DefensivePlayer::GetCenterOfLargestPolygon(stoneList,currentPlayer,&stoneIdx);
+  EXPECT_EQ(stoneIdx,2);
+  EXPECT_EQ(pos.x,493);
+  EXPECT_EQ(pos.y,158);
+}
+//End Tests for Defensive Player.
 
 TEST(Tile, Tiles)
 {
@@ -118,6 +246,8 @@ TEST(GreedyPlayer, Play)
     EXPECT_TRUE(scores[0] < scores[1]);
   }
 }
+
+
 }
 
 
