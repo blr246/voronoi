@@ -41,9 +41,9 @@ struct RandomPlayer{
 struct GreedyPlayer{
   static void Play(Voronoi& game)
   {
-    std::cout << "Greedy player playing..." << std::endl;
+    //std::cout << "Greedy player playing..." << std::endl;
     Tile::TileList tiles;
-    Tile::UnplayedTiles(game, 20, &tiles);
+    Tile::UnplayedTiles(game, 50, &tiles);
     Tile::TileList::iterator bestTileIt;
     float bestScore = 0;// -infinity?
     Stone stone;
@@ -51,7 +51,7 @@ struct GreedyPlayer{
 
     for(Tile::TileList::iterator i = tiles.begin(); i < tiles.end(); i++)
     {
-      std::cout << ".";
+      //std::cout << ".";
       stone.pos = i->center;
       game.Play(stone);
       float curScore = GameScore(game);
@@ -62,7 +62,7 @@ struct GreedyPlayer{
         bestScore = curScore;
       }
     }
-    std::cout << std::endl;
+    //std::cout << std::endl;
 
     stone.pos = bestTileIt->center;
     game.Play(stone);

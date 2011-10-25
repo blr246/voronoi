@@ -230,7 +230,8 @@ TEST(GreedyPlayer, Play)
       GreedyPlayer::Play(game);
     }
     Voronoi::ScoreList scores;
-    game.Scores(&scores);
+    //game.Scores(&scores);
+    NaiveScore(game, &scores);
     EXPECT_TRUE(scores[0] < scores[1]);
   }
   for(int i = 0; i < 10; i++)
@@ -242,8 +243,9 @@ TEST(GreedyPlayer, Play)
       RandomPlayer::Play(game);
     }
     Voronoi::ScoreList scores;
-    game.Scores(&scores);
-    EXPECT_TRUE(scores[0] < scores[1]);
+    //game.Scores(&scores);
+    NaiveScore(game, &scores);
+    EXPECT_TRUE(scores[0] > scores[1]);
   }
 }
 
