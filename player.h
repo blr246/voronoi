@@ -83,12 +83,24 @@ struct GreedyPlayer{
 };
 
 
-struct DefensivePlayer:public Player
+class DefensivePlayer:public Player
 {
-  virtual void Play(Voronoi& game)
-  {
-    
-  }
+ private:
+  void ComputeCentroid(const Stone::Vertices& vertices, 
+		       Position* pos) const;
+
+  int GetIndexOfLargestAreaPolygon(const Voronoi::StoneList& stoneList, 
+				   const int currentPlayer) const;
+
+  Position GetCenterOfLargestPolygon(const Voronoi::StoneList& played,
+				     const int currentPlayer, int* stoneIdx) const;
+ public:
+  DefensivePlayer()
+  {}
+  virtual void Play(Voronoi& game);
+  ~DefensivePlayer()
+  {}
+  
 };
 
 }
