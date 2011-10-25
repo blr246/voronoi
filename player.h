@@ -11,6 +11,11 @@ namespace voronoi
 {
 typedef Vector2<int> Position;
 
+struct Player
+{
+  virtual void Play(Voronoi& game) = 0;
+};
+
 struct RandomPlayer{
   static void RandomPosition(const Voronoi& game, Stone* move)
   {
@@ -74,6 +79,15 @@ struct GreedyPlayer{
     // This is where a greedy heuristic goes, we want score plus some notion of defensibility,
     // Defensibility should correspond to how many polygons you own or how spread out your area is.
     return scores[lastPlayer]; 
+  }
+};
+
+
+struct DefensivePlayer:public Player
+{
+  virtual void Play(Voronoi& game)
+  {
+    
   }
 };
 

@@ -16,6 +16,7 @@ template <typename NumericType>
 struct GenericStone
 {
   typedef Vector2<NumericType> Position;
+  typedef std::vector<Position> Vertices;
   GenericStone() : player(-1), pos() {}
   GenericStone(const int player_, const Position& pos_)
     : player(player_),
@@ -25,6 +26,8 @@ struct GenericStone
   int player;
   /// <summary> The stone position. </summary>
   Position pos;
+  /// <summary> The vertices of the polygon surrounding the Stone.</summary>
+  Vertices vertices;
 };
 }
 
