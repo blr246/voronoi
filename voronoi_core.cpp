@@ -706,7 +706,7 @@ static void ScoreNearestStone(const Voronoi::StoneList& stoneList, const AxisAli
 			int playerIndex = -1;
 			for(int k=0;k<stoneList.size();++k)
 			{
-				Stone stone = stoneList[i];
+				Stone stone = stoneList[k];
 				int distance = SquaredDistance(stone.pos,Vector2<int>(i,j));
 				if(bestDistance > distance)
 				{
