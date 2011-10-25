@@ -133,7 +133,7 @@ private:
   /// <summary> Number of stones per player. </summary>
   int m_stonesPerPlayer;
   /// <summary> Stones played so far. </summary>
-  StoneList m_stonesPlayed;
+  mutable StoneList m_stonesPlayed;
   /// <summary> Stones played so far in normalized coordinates. </summary>
   StoneNormalizedList m_stonesPlayedNorm;
   /// <summary> The game play area in world coordinates. </summary>

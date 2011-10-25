@@ -599,6 +599,15 @@ bool Voronoi::FortuneScores(ScoreList* scores) const
     // Add this polygon to the player score.
     static const FloatType kAreaScale = (kInternalBoardScaleInv * kInternalBoardScaleInv);
     scores->at(stoneIdx % m_players) += normArea * kAreaScale;
+    // Add this polygon to the stone.
+    {
+      Stone::Vertices& vertInStone = m_stonesPlayed[stoneIdx].vertices;
+      vertInStone.clear();
+      for (int vertexIdx = 0; vertexIdx < vertices.size(); ++vertexIdx)
+      {
+        vertInStone.push_back(Stone::Position(vertices[vertexIdx].x, vertices[vertexIdx].y));
+      }
+    }
   }
   return true;
 }
@@ -609,6 +618,10 @@ bool Voronoi::Scores(ScoreList* scores) const
   {
     std::cout << "Scoring failed, falling back to naive scoring." << std::endl;
     NaiveScore(*this, scores);
+    for (int stoneIdx = 0; stoneIdx < m_stonesPlayed.size(); ++stoneIdx)
+    {
+      m_stonesPlayed[stoneIdx].vertices.clear();
+    }
   }
   return true;
 }
