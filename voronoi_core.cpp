@@ -604,7 +604,7 @@ bool Voronoi::FortuneScores(ScoreList* scores) const
     {
       Stone::Vertices& vertInStone = m_stonesPlayed[stoneIdx].vertices;
       vertInStone.clear();
-      for (int vertexIdx = 0; vertexIdx < vertices.size(); ++vertexIdx)
+      for (int vertexIdx = 0; vertexIdx < (vertices.size() - 1); ++vertexIdx)
       {
         vertInStone.push_back(Stone::Position(vertices[vertexIdx].x, vertices[vertexIdx].y));
       }
