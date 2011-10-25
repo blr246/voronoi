@@ -1,6 +1,6 @@
 #ifndef _HPS_VORONOI_PLAYER_H_
 #define _HPS_VORONOI_PLAYER_H_
-
+#include"rand_bound.h"
 #include "voronoi_core.h"
 #include <vector>
 #include <algorithm>

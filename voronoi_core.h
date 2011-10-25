@@ -3,6 +3,7 @@
 #include "geometry.h"
 #include <vector>
 #include <limits>
+#include <sstream>
 
 namespace hps
 {
@@ -110,6 +111,17 @@ public:
   inline Board GetBoard() const
   {
     return m_board;
+  }
+
+  void InitBoard(std::string buffer, std::string start, std::string end);
+  
+  inline std::string Compute()
+  {
+    int x = m_stonesPlayed.back().pos.x;
+    int y = m_stonesPlayed.back().pos.y;
+    std::stringstream ss;
+    ss << x << " " << y;
+    return ss.str();
   }
 
 private:
