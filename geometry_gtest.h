@@ -34,9 +34,9 @@ TEST(GeometryObjects, geometry)
       EXPECT_EQ(2, v.v[1]);
     }
   }
-  // Segment.
+  // Segment2.
   {
-    Segment<int> s(Vector2<int>(5, 4), Vector2<int>(8, 12));
+    Segment2<int> s(Vector2<int>(5, 4), Vector2<int>(8, 12));
     EXPECT_EQ(5, s.p0.x);
     EXPECT_EQ(4, s.p0.y);
     EXPECT_EQ(8, s.p1.x);

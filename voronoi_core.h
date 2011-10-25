@@ -72,7 +72,7 @@ public:
   }
 
   /// <summary> Compute the score for all players. </summary>
-  void Scores(ScoreList* scores) const;
+  bool Scores(ScoreList* scores) const;
 
   /// <summary> Get number of players. </summary>
   inline int NumPlayers() const

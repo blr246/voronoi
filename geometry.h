@@ -101,12 +101,20 @@ inline float Vector2Length(const Vector2<NumericType>& v)
   return sqrt(static_cast<float>(Vector2LengthSq(v)));
 }
 
+template <typename NumericType>
+inline bool Vector2NearlyEqual(const Vector2<NumericType>& lhs,
+                                const Vector2<NumericType>& rhs,
+                                const NumericType errSqBound)
+{
+  return Vector2LengthSq(rhs - lhs) < errSqBound;
+}
+
 /// <summary> A segment defined by two points. </summary>
 template <typename NumericType>
-struct Segment
+struct Segment2
 {
-  Segment() : p0(), p1() {}
-  Segment(const Vector2<NumericType>& p0_, const Vector2<NumericType>& p1_)
+  Segment2() : p0(), p1() {}
+  Segment2(const Vector2<NumericType>& p0_, const Vector2<NumericType>& p1_)
     : p0(p0_),
       p1(p1_)
   {}
@@ -115,7 +123,7 @@ struct Segment
 };
 
 template <typename NumericType>
-inline bool operator==(const Segment<NumericType>& lhs, const Segment<NumericType>& rhs)
+inline bool operator==(const Segment2<NumericType>& lhs, const Segment2<NumericType>& rhs)
 {
   // Check cris-cross, too.
   return ((lhs.p0 == rhs.p0) && (lhs.p1 == rhs.p1)) ||
@@ -123,7 +131,18 @@ inline bool operator==(const Segment<NumericType>& lhs, const Segment<NumericTyp
 }
 
 template <typename NumericType>
-inline bool operator!=(const Segment<NumericType>& lhs, const Segment<NumericType>& rhs)
+inline bool Segment2NearlyEqual(const Segment2<NumericType>& lhs, const Segment2<NumericType>& rhs,
+                                const NumericType errSqBound)
+{
+  // Check cris-cross, too.
+  return (Vector2NearlyEqual(lhs.p0, rhs.p0, errSqBound) &&
+          Vector2NearlyEqual(lhs.p1, rhs.p1, errSqBound)) ||
+         (Vector2NearlyEqual(lhs.p0, rhs.p1, errSqBound) &&
+          Vector2NearlyEqual(lhs.p1, rhs.p0, errSqBound));
+}
+
+template <typename NumericType>
+inline bool operator!=(const Segment2<NumericType>& lhs, const Segment2<NumericType>& rhs)
 {
   return !(lhs == rhs);
 }
@@ -186,6 +205,13 @@ struct AxisAlignedBox
 //    Line<NumericType> lines[BoxSides];
 //  };
 //};
+
+/// <summary> Rotate vector 90 degrees counter-clockwise. </summary>
+template <typename NumericType>
+inline Vector2<NumericType> Vector2Normalize(const Vector2<NumericType>& v)
+{
+  return (1 / Vector2Length(v)) * v;
+}
 
 /// <summary> Rotate vector 90 degrees counter-clockwise. </summary>
 template <typename NumericType>
