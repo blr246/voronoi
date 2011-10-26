@@ -593,10 +593,10 @@ bool Voronoi::FortuneScores(ScoreList* scores) const
          ++linkedSeg)
     {
       vertices.push_back(linkedSeg->p0);
-      vertices.push_back(linkedSeg->p1);
       normArea += (linkedSeg->p0.x * linkedSeg->p1.y) - (linkedSeg->p0.y * linkedSeg->p1.x);
     }
     normArea *= static_cast<FloatType>(0.5);
+    vertices.push_back(linkedSegments.back().p1);
     // Add this polygon to the player score.
     static const FloatType kAreaScale = (kInternalBoardScaleInv * kInternalBoardScaleInv);
     scores->at(stoneIdx % m_players) += normArea * kAreaScale;
