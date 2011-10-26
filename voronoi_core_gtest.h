@@ -167,12 +167,12 @@ TEST(VoronoiScore, voronoi_core)
   // Random cases. Make sure that the area sums to the expected total.
   {
     const float kExpectSuccessPct = 0.95f;
-    enum { RandomIterations3Stones = 500, };
+    enum { RandomIterations = 500, };
     const int kExpectScoreSuccessCount =
-      static_cast<int>(RandomIterations3Stones * kExpectSuccessPct);
+      static_cast<int>(RandomIterations * kExpectSuccessPct);
     const FloatType expectTotalScore = static_cast<FloatType>(BoardDim * BoardDim);
     int scoreSuccessCount = 0;
-    for (int iteration = 0; iteration < RandomIterations3Stones; ++iteration)
+    for (int iteration = 0; iteration < RandomIterations; ++iteration)
     {
       enum { Plays = 3, };
       Voronoi game(Players, StonesPerPlayer, Voronoi::BoardSize(BoardDim, BoardDim));
@@ -185,17 +185,24 @@ TEST(VoronoiScore, voronoi_core)
       }
       // Verify scoring.
       Voronoi::ScoreList scores;
-      if (game.Scores(&scores))
+      const bool fortuneSuccess = game.Scores(&scores);
+      const FloatType totalScore = std::accumulate(scores.begin(), scores.end(),
+                                                   static_cast<FloatType>(0));
+      if (fortuneSuccess)
       {
-        const FloatType totalScore = std::accumulate(scores.begin(), scores.end(),
-                                                     static_cast<FloatType>(0));
         EXPECT_NEAR(expectTotalScore, totalScore, totalScore * 0.05f)
-          << "Scores did not sum properly on iteration " << iteration << " of "
-          << RandomIterations3Stones << ".";
+          << "Fortune scores did not sum properly on iteration " << iteration << " of "
+          << RandomIterations << ".";
         ++scoreSuccessCount;
       }
+      else
+      {
+        EXPECT_NEAR(expectTotalScore, totalScore, totalScore * 0.01f)
+          << "Naieve scores did not sum properly on iteration " << iteration << " of "
+          << RandomIterations << ".";
+      }
     }
-    std::cout << "Scored " << scoreSuccessCount << " of " << RandomIterations3Stones
+    std::cout << "Scored " << scoreSuccessCount << " of " << RandomIterations
               << " iterations successfully." << std::endl;
     EXPECT_GE(scoreSuccessCount, kExpectScoreSuccessCount);
   }
@@ -220,14 +227,23 @@ TEST(VoronoiScore, voronoi_core)
       }
       // Verify scoring.
       Voronoi::ScoreList scores;
-      if (game.Scores(&scores))
+      const bool fortuneSuccess = game.Scores(&scores);
+      const FloatType totalScore = std::accumulate(scores.begin(), scores.end(),
+                                                   static_cast<FloatType>(0));
+      if (fortuneSuccess)
       {
         const FloatType totalScore = std::accumulate(scores.begin(), scores.end(),
                                                      static_cast<FloatType>(0));
-        EXPECT_NEAR(expectTotalScore, totalScore, totalScore * 0.10f)
-          << "Scores did not sum properly on iteration " << iteration << " of "
+        EXPECT_NEAR(expectTotalScore, totalScore, totalScore * 0.05f)
+          << "Fortune scores did not sum properly on iteration " << iteration << " of "
           << RandomIterations << ".";
         ++scoreSuccessCount;
+      }
+      else
+      {
+        EXPECT_NEAR(expectTotalScore, totalScore, totalScore * 0.01f)
+          << "Naieve scores did not sum properly on iteration " << iteration << " of "
+          << RandomIterations << ".";
       }
     }
     std::cout << "Scored " << scoreSuccessCount << " of " << RandomIterations
@@ -255,14 +271,23 @@ TEST(VoronoiScore, voronoi_core)
       }
       // Verify scoring.
       Voronoi::ScoreList scores;
-      if (game.Scores(&scores))
+      const bool fortuneSuccess = game.Scores(&scores);
+      const FloatType totalScore = std::accumulate(scores.begin(), scores.end(),
+                                                   static_cast<FloatType>(0));
+      if (fortuneSuccess)
       {
         const FloatType totalScore = std::accumulate(scores.begin(), scores.end(),
                                                      static_cast<FloatType>(0));
         EXPECT_NEAR(expectTotalScore, totalScore, totalScore * 0.05f)
-          << "Scores did not sum properly on iteration " << iteration << " of "
+          << "Fortune scores did not sum properly on iteration " << iteration << " of "
           << RandomIterations << ".";
         ++scoreSuccessCount;
+      }
+      else
+      {
+        EXPECT_NEAR(expectTotalScore, totalScore, totalScore * 0.01f)
+          << "Naieve scores did not sum properly on iteration " << iteration << " of "
+          << RandomIterations << ".";
       }
     }
     std::cout << "Scored " << scoreSuccessCount << " of " << RandomIterations

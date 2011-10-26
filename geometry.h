@@ -18,6 +18,7 @@ namespace geometry
 template <typename NumericType>
 struct Vector2
 {
+  typedef NumericType NumericType;
   enum { Dim = 2, };
   Vector2() : x(0), y(0) {}
   Vector2(const NumericType x_, const NumericType y_) : x(x_), y(y_) {}

@@ -17,9 +17,9 @@ namespace voronoi
 {
 
 typedef Voronoi::FloatType FloatType;
-const FloatType kInternalBoardScale = static_cast<FloatType>(10000);
+const FloatType kInternalBoardScale = static_cast<FloatType>(1000);
 const FloatType kInternalBoardScaleInv = 1 / kInternalBoardScale;
-const FloatType kVecEqSqBound = static_cast<FloatType>(0.25) * kInternalBoardScale;
+const FloatType kVecEqSqBound = static_cast<FloatType>(0.3) * kInternalBoardScale;
 
 namespace detail
 {
@@ -146,10 +146,10 @@ struct BoardEdgeHelper
   {
     // Get vector from edge base to point.
     const Line<NumericType>* edge = boardEdges + edgeIdx;
-    const Vector2<NumericType> edgePtToP = p - edge->p0;
+    const Vector2<NumericType> edgePtToP = Vector2Normalize(p - edge->p0);
     // See if the point is along the edge.
     const NumericType dotAlongEdgeTest = Vector2Dot(edgePtToP, Vector2Rotate90(edge->dir));
-    if (fabs(dotAlongEdgeTest) < static_cast<NumericType>(kVecEqSqBound))
+    if (fabs(dotAlongEdgeTest) < static_cast<NumericType>(1.0e-6f))
     {
       return true;
     }
@@ -319,10 +319,9 @@ bool Voronoi::FortuneScores(ScoreList* scores) const
   }
 
   detail::BoardEdgeHelper<FloatType> boardEdgeHelper(m_boardNorm);
-  const FloatType halfMinEdgeLenSq = 0.2f;
-  const detail::SegmentMinLengthSqFilter<FloatType> minLengthSqFilter(halfMinEdgeLenSq);
-  const FloatType halfMinEdgeLen = sqrt(halfMinEdgeLenSq);
-  const Vector2<FloatType> halfMinEdgeLenVec(halfMinEdgeLen, halfMinEdgeLen);
+  const detail::SegmentMinLengthSqFilter<FloatType> minLengthSqFilter(static_cast<FloatType>(0.5) *
+                                                                      kInternalBoardScale);
+  const Vector2<FloatType> halfMinEdgeLenVec(kVecEqSqBound, kVecEqSqBound);
   AxisAlignedBox<FloatType> boardNormNoEdge(m_boardNorm.mins + halfMinEdgeLenVec,
                                             m_boardNorm.maxs - halfMinEdgeLenVec);
 
@@ -605,9 +604,11 @@ bool Voronoi::FortuneScores(ScoreList* scores) const
     {
       Stone::Vertices& vertInStone = m_stonesPlayed[stoneIdx].vertices;
       vertInStone.clear();
-      for (int vertexIdx = 0; vertexIdx < (vertices.size() - 1); ++vertexIdx)
+      for (int vertexIdx = 0; vertexIdx < static_cast<int>(vertices.size() - 1); ++vertexIdx)
       {
-        vertInStone.push_back(Stone::Position(vertices[vertexIdx].x, vertices[vertexIdx].y));
+        typedef Stone::Position::NumericType CastType;
+        vertInStone.push_back(Stone::Position(static_cast<CastType>(vertices[vertexIdx].x),
+                                              static_cast<CastType>(vertices[vertexIdx].y)));
       }
     }
   }
@@ -620,12 +621,38 @@ bool Voronoi::Scores(ScoreList* scores) const
   {
     std::cout << "Scoring failed, falling back to naive scoring." << std::endl;
     NaiveScore(*this, scores);
-    for (int stoneIdx = 0; stoneIdx < m_stonesPlayed.size(); ++stoneIdx)
+    for (int stoneIdx = 0; stoneIdx < static_cast<int>(m_stonesPlayed.size()); ++stoneIdx)
     {
       m_stonesPlayed[stoneIdx].vertices.clear();
     }
+    return false;
   }
   return true;
+}
+
+void ScoreNearestStone(const Voronoi::StoneList& stoneList,
+                       const std::vector<Tile>& tileList,
+                       Voronoi::ScoreList* scores)
+{
+  int bestDistance = std::numeric_limits<int>::max();
+  int playerIndex = -1;
+  for(unsigned int i=0;i<tileList.size();++i)
+  {
+    const Tile& tile = tileList[i];
+    for(unsigned int j=0;j<stoneList.size();++j)
+    {
+      const Stone& stone = stoneList[j];
+      int distance = Vector2LengthSq(stone.pos - tile.center);
+      if(bestDistance > distance)
+      {
+        bestDistance = distance;
+        playerIndex = stone.player;
+      }
+    }
+    assert(playerIndex >=0);
+    assert(playerIndex < static_cast<int>(scores->size()));
+    scores->at(playerIndex) += 1.0f;
+  }
 }
 
 void NaiveScore(const Voronoi& game, Voronoi::ScoreList* scores)
@@ -639,10 +666,8 @@ void NaiveScore(const Voronoi& game, Voronoi::ScoreList* scores)
   scores->assign(game.NumPlayers(), 0.0f);
   ScoreNearestStone(stones, tileList, scores);
   const float kScale = static_cast<float>(tileArea);
-  for(unsigned int i = 0; i < game.NumPlayers(); i++)
-  {
-    scores->at(i) *= kScale;
-  }
+  std::transform(scores->begin(), scores->end(), scores->begin(),
+                 std::bind1st(std::multiplies<float>(), kScale));
 }
 
 

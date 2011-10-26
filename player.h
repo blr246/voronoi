@@ -81,7 +81,7 @@ struct GreedyPlayer: public Player
     int bestTileIt =-1;
     float bestScore = std::numeric_limits<float>::min();
 
-    for(int i = 0; i< tiles.size(); i++)
+    for(int i = 0; i < static_cast<int>(tiles.size()); i++)
     {
       //std::cout << ".";
       stone.pos = tiles.at(i).center;
@@ -131,7 +131,7 @@ struct DefensivePlayer: public Player
     
     Position pos = GetCenterOfLargestPolygon(stoneList,currentPlayer,&stoneIdx);
     
-    assert(stoneIdx >=0 && stoneIdx < stoneList.size());
+    assert(stoneIdx >=0 && stoneIdx < static_cast<int>(stoneList.size()));
     Stone stone = stoneList.at(stoneIdx);
     stone.player = currentPlayer;
     stone.pos = pos;
@@ -143,7 +143,7 @@ struct DefensivePlayer: public Player
 					    const int currentPlayer, int* stoneIdx)
   {
     ComputeIndexOfLargestAreaPolygon(played,currentPlayer,stoneIdx);
-    assert(*stoneIdx >=0 && *stoneIdx < played.size());
+    assert(*stoneIdx >=0 && *stoneIdx < static_cast<int>(played.size()));
     Stone stone = played.at(*stoneIdx);
     
     Position pos;
@@ -156,17 +156,17 @@ struct DefensivePlayer: public Player
 					      const int currentPlayer, int* stoneIdx)
   {
     float largestArea = std::numeric_limits<float>::min();
-    for(int i=0;i<stoneList.size();++i)
+    for(int i=0;i<static_cast<int>(stoneList.size());++i)
     {
       Stone stone = stoneList.at(i);
       if(stone.player != currentPlayer)
       {
-	float area = GetArea(stone.vertices);
-	if(largestArea < area)
-	{
-	  largestArea = area;
-	  *stoneIdx = i;
-	}
+        float area = GetArea(stone.vertices);
+        if(largestArea < area)
+        {
+          largestArea = area;
+          *stoneIdx = i;
+        }
       }
     }
   }
@@ -175,7 +175,7 @@ struct DefensivePlayer: public Player
   {
     int sum = 0;
     int i=0;
-    for(;i<vertices.size()-1;++i)
+    for(;i<static_cast<int>(vertices.size()-1);++i)
     {
       Vector2<int> v1 = vertices.at(i);
       Vector2<int> v2 = vertices.at(i+1);

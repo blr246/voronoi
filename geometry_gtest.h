@@ -223,14 +223,14 @@ struct LineIntersectLineTest
         const Vector2<float> intersectPt = (float) MaxCoord * Vector2RandUniform();
         // Get two random directions.
         const Vector2<float> dir_a = Vector2RandUniform();
-        const Vector2<float> dir_a_norm = dir_a * (1.0f / Vector2Length(dir_a));
+        const Vector2<float> dir_a_norm = Vector2Normalize(dir_a);
         // Select dir_b so that it is not nearly parallel.
         Vector2<float> dir_b = Vector2RandUniform();
-        Vector2<float> dir_b_norm = dir_b * (1.0f / Vector2Length(dir_b));
+        Vector2<float> dir_b_norm = Vector2Normalize(dir_b);
         while (fabs(Vector2Dot(dir_a_norm, dir_b_norm)) > (1.0f - kParallelDotBound))
         {
           dir_b = Vector2RandUniform();
-          dir_b_norm = dir_b * (1.0f / Vector2Length(dir_b));
+          dir_b_norm = Vector2Normalize(dir_b);
         }
         assert((1.0f - Vector2LengthSq(dir_a_norm)) < kUnitVecLenSqBound);
         assert((1.0f - Vector2LengthSq(dir_b_norm)) < kUnitVecLenSqBound);
@@ -248,7 +248,7 @@ struct LineIntersectLineTest
     {
       SCOPED_TRACE("LineIntersectLineTest(): Negative test.");
       enum { MaxCoord = 100, };
-      const float kParallelDotBound = 1.0e-6f;
+      const float kParallelDotBound = 1.0e-5f;
       const float kPerturbScale = 1.0e-4f;
       enum { MaxOffset = MaxCoord / 2, };
       for (int iteration = 0; iteration < Iterations; ++iteration)
@@ -257,14 +257,14 @@ struct LineIntersectLineTest
         const Vector2<float> intersectPt = (float) MaxCoord * Vector2RandUniform();
         // Get two random directions that are nearly parallel;
         const Vector2<float> dir_a = Vector2RandUniform();
-        const Vector2<float> dir_a_norm = dir_a * (1.0f / Vector2Length(dir_a));
+        const Vector2<float> dir_a_norm = Vector2Normalize(dir_a);
         // Select dir_b so that it is nearly parallel.
         Vector2<float> dir_b = dir_a + (kPerturbScale * Vector2RandUniform());
-        Vector2<float> dir_b_norm = dir_b * (1.0f / Vector2Length(dir_a));
+        Vector2<float> dir_b_norm = Vector2Normalize(dir_b);
         while (fabs(Vector2Dot(dir_a_norm, dir_b_norm)) < (1.0f - kParallelDotBound))
         {
           dir_b = dir_a + (kPerturbScale * Vector2RandUniform());
-          dir_b_norm = dir_b * (1.0f / Vector2Length(dir_b));
+          dir_b_norm = Vector2Normalize(dir_b);
         }
         // Create two lines.
         const Line<float> a(intersectPt + dir_a_norm * (1 + RandBound(MaxOffset)), dir_a_norm);

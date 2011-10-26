@@ -4,6 +4,8 @@
 #include <vector>
 #include <limits>
 #include <sstream>
+#include <cstdlib>
+#include <cstddef>
 
 namespace hps
 {
@@ -226,36 +228,9 @@ struct Tile
   }
 };
 
-
-static int SquaredDistance(Vector2<int> p1, Vector2<int> p2)
-{
-	int x = std::abs(p2.x-p1.x);
-	int y = std::abs(p2.y-p1.y);
-	return x*x + y*y;
-}
-	
-static void ScoreNearestStone(const Voronoi::StoneList& stoneList, const std::vector<Tile>& tileList, Voronoi::ScoreList* scores)
-{
-  int bestDistance = std::numeric_limits<int>::max();
-  int playerIndex = -1;
-  for(unsigned int i=0;i<tileList.size();++i)
-  {
-    Tile tile = tileList[i];
-    for(unsigned int j=0;j<stoneList.size();++j)
-    {
-      Stone stone = stoneList[j];
-      int distance = SquaredDistance(stone.pos,tile.center);
-      if(bestDistance > distance)
-      {
-        bestDistance = distance;
-        playerIndex = stone.player;
-      }
-    }
-    assert(playerIndex >=0);
-    assert(playerIndex < scores->size());
-    scores->at(playerIndex) += 1.0f;
-  }
-}
+void ScoreNearestStone(const Voronoi::StoneList& stoneList,
+                       const std::vector<Tile>& tileList,
+                       Voronoi::ScoreList* scores);
 
 void NaiveScore(const Voronoi& game, Voronoi::ScoreList* scores);
 
