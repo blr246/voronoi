@@ -78,12 +78,12 @@ void readSocket ( int sockfd, char buffer[1024] ) {
     int n;
     char tmp[256];
 
-    memset( tmp, 0, sizeof(char)*256);
+    memset( tmp, 0, sizeof(char)*sizeof(tmp));
     strcpy( buffer, "" );
     /* Keep reading until we get to the end of the message */
-    while ( !isEndOfMessage( buffer ) && (n = read(sockfd,tmp,256)) != 0 ) {
-    	strcat(buffer, tmp);
-        memset( tmp, 0, sizeof(char)*256);
+    while ( !isEndOfMessage( buffer ) && (n = read(sockfd,tmp,sizeof(tmp) - 1)) != 0 ) {
+      strcat(buffer, tmp);
+      memset( tmp, 0, sizeof(char)*sizeof(tmp));
     }
     if (n < 0) 
          error("ERROR reading from socket");
@@ -153,7 +153,7 @@ int main(int argc, char *argv[])
     /* Now we know how many turns we have, let's repeat */
     for ( i = 1; i < g_num_turns; i++ ) {
         readSocket( sockfd, buffer );
-	startGame();
+        startGame();
         writeSocket( sockfd, buffer );
     }
 

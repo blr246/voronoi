@@ -101,6 +101,7 @@ struct GreedyPlayer: public Player
     stone.pos = tiles.at(bestTileIt).center;
     game.Play(stone);
     tiles.erase(tiles.begin()+bestTileIt); // Remove the played tile;
+    std::cout << "Playing at: player: " << stone.player << ", x: " << stone.pos.x << ", y: " << stone.pos.y <<std::endl;
   }
 
   static float GameScore(const Voronoi& game)

@@ -53,23 +53,24 @@ void Voronoi::InitBoard(std::string buffer, std::string start, std::string end)
   m_stonesPlayed.clear();
   size_t prev = 0;
   size_t next = buffer.find_first_of("\n");
-  buffer = buffer.substr(buffer.find(start)+start.length());
+  //buffer = buffer.substr(buffer.find(start)+start.length());
   while(next!=std::string::npos)
   {
-    //std::cout << "reading coordinates..." <<std::endl; 
     std::stringstream ss;
     int player;
     int x;
     int y;
     std::string sep;
     std::string buf = buffer.substr(prev,next-prev);
+    std::cout << buf << std::endl;
     if(buf.length()>0)
     {
+      std::cout << buf << std::endl;
       ss << buf;
       ss >> player >> sep >> x >> y;
       Vector2<int> pos(x,y); 
       Stone stone(player,pos);
-      //std::cout << "player: " << player << ", x: " << x << ", y: " << y <<std::endl;
+      std::cout << "Got previous move: player: " << player << ", x: " << x << ", y: " << y <<std::endl;
       Play(stone);
     }
     prev = next+1;
