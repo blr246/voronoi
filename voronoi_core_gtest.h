@@ -10,14 +10,14 @@ using namespace hps;
 
 typedef Voronoi::FloatType FloatType;
 
-TEST(Stone, voronoi_core)
+TEST(voronoi_core, Stone)
 {
   Stone stone(0, Stone::Position(0, 5));
   EXPECT_EQ(0, stone.player);
   EXPECT_EQ(Stone::Position(0, 5), stone.pos);
 }
 
-TEST(Voronoi, voronoi_core)
+TEST(voronoi_core, Voronoi)
 {
   enum { Players = 2, };
   enum { StonesPerPlayer = 10, };
@@ -40,7 +40,7 @@ TEST(Voronoi, voronoi_core)
   }
 }
 
-TEST(VoronoiScore, voronoi_core)
+TEST(voronoi_core, VoronoiScore)
 {
   enum { Players = 2, };
   enum { StonesPerPlayer = 10, };

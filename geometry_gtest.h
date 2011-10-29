@@ -15,7 +15,7 @@ namespace _hps_geometry_geometry_gtest_h_
 {
 using namespace hps;
 
-TEST(GeometryObjects, geometry)
+TEST(geometry, GeometryObjects)
 {
   // Vector2.
   {
@@ -187,7 +187,7 @@ void TestVector2()
     }
   }
 }
-TEST(Vector2, geometry)
+TEST(geometry, Vector2)
 {
   {
     SCOPED_TRACE("Vector2<int>");
@@ -276,7 +276,7 @@ struct LineIntersectLineTest
     }
   }
 };
-TEST(LineIntersectLine, geometry)
+TEST(geometry, LineIntersectLine)
 {
 #if NDEBUG
   LineIntersectLineTest<100000>::Run();

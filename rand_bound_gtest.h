@@ -7,7 +7,7 @@ namespace _hps_ambulance_rand_bound_gtest_h_
 {
 using namespace hps;
 
-TEST(RatioOfUniforms, RandBound)
+TEST(RandBound, RatioOfUniforms)
 {
   // reissb -- 20111017 -- This is a visual GTest. Inspect the output
   //   histogram to verify that it has the proper normal distribution shape.
