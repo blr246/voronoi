@@ -94,6 +94,14 @@ struct Parser
     game->Initialize(numPlayers, boardSize);
     *myPlayer = playerNum;
 
+    // Ignore scores.
+    if (!ReadNextLineNonEmpty(ssState, &line)) { return false; }
+    assert(line == "PLAYER SCORES");
+    for (int playerIdx = 0; playerIdx < numPlayers; ++playerIdx)
+    {
+      if (!ReadNextLineNonEmpty(ssState, &line)) { return false; }
+    }
+
     // Extract remianing state information.
     if (!ReadNextLineNonEmpty(ssState, &line)) { return false; }
     assert(line == "BOARD STATE");
