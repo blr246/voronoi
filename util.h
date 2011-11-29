@@ -108,7 +108,7 @@ struct Parser
     do
     {
       if (!ReadNextLineNonEmpty(ssState, &line)) { return false; }
-      if (line != "Enter New position \"X Y\":")
+      if (std::string::npos == line.find("Enter"))
       {
         Stone stone;
         ExtractStone(line, &stone);
