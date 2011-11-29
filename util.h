@@ -45,6 +45,20 @@ struct Parser
     ssCoords >> stone->pos.x >> stone->pos.y;
   }
 
+  /// <summary> Read next non-empty line from stream. </summary>
+  inline static bool ReadNextLineNonEmpty(std::istream& stream, std::string* line)
+  {
+    while (stream.good())
+    {
+      std::getline(stream, *line);
+      if (!line->empty())
+      {
+        return true;
+      }
+    }
+    return false;
+  }
+
   /// <summary> Construct game from state string. </summary>
   static bool Parse(const std::string& stateString,
                     const Voronoi::BoardSize& boardSize,
@@ -54,27 +68,23 @@ struct Parser
     std::string line;
 
     // Extract game info.
-    std::getline(ssState, line);
-    if (line.empty()) { return false; }
+    if (!ReadNextLineNonEmpty(ssState, &line)) { return false; }
     assert(line == "GLOBALS");
     std::string key;
     // Turns.
-    std::getline(ssState, line);
-    if (line.empty()) { return false; }
+    if (!ReadNextLineNonEmpty(ssState, &line)) { return false; }
     int numTurns;
     ExtractKeyValuePair(line, &key, &numTurns);
     if (key.empty()) { return false; }
     assert("Total Turns" == key);
     // Players.
-    std::getline(ssState, line);
-    if (line.empty()) { return false; }
+    if (!ReadNextLineNonEmpty(ssState, &line)) { return false; }
     int numPlayers;
     ExtractKeyValuePair(line, &key, &numPlayers);
     if (key.empty()) { return false; }
     assert("Total Players" == key);
     // Who.
-    std::getline(ssState, line);
-    if (line.empty()) { return false; }
+    if (!ReadNextLineNonEmpty(ssState, &line)) { return false; }
     int playerNum;
     ExtractKeyValuePair(line, &key, &playerNum);
     if (key.empty()) { return false; }
@@ -85,13 +95,11 @@ struct Parser
     *myPlayer = playerNum;
 
     // Extract remianing state information.
-    std::getline(ssState, line);
-    if (line.empty()) { return false; }
+    if (!ReadNextLineNonEmpty(ssState, &line)) { return false; }
     assert(line == "BOARD STATE");
     do
     {
-      std::getline(ssState, line);
-      if (line.empty()) { return false; }
+      if (!ReadNextLineNonEmpty(ssState, &line)) { return false; }
       if (line != "Enter New position \"X Y\":")
       {
         Stone stone;
