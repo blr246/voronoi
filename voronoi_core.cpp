@@ -35,52 +35,33 @@ struct StonePositionsEqual
 };
 }
 
-Voronoi::Voronoi(const int players, const int stonesPerPlayer,
-                 const BoardSize& boardSize)
-: m_players(players),
-  m_stonesPerPlayer(stonesPerPlayer),
+Voronoi::Voronoi()
+: m_players(0),
   m_stonesPlayed(),
   m_stonesPlayedNorm(),
-  m_board(Vector2<int>(0, 0), Vector2<int>(boardSize.x, boardSize.y)),
+  m_board(Vector2<int>(0, 0), Vector2<int>(1000, 1000)),
   m_boardNorm(Vector2<FloatType>(0, 0),
-              Vector2<FloatType>(static_cast<FloatType>(boardSize.x * kInternalBoardScale),
-                                 static_cast<FloatType>(boardSize.y * kInternalBoardScale)))
+              Vector2<FloatType>(m_board.maxs.x * kInternalBoardScale,
+                                 m_board.maxs.y * kInternalBoardScale))
 {}
 
-void Voronoi::InitBoard(std::string buffer, std::string start, std::string end)
+void Voronoi::Initialize(const int players, const BoardSize& boardSize)
 {
-  //std::cout << "Initializing Board..." << std::endl;
+  m_players = players; 
   m_stonesPlayed.clear();
-  size_t prev = 0;
-  size_t next = buffer.find_first_of("\n");
-  //buffer = buffer.substr(buffer.find(start)+start.length());
-  while(next!=std::string::npos)
-  {
-    std::stringstream ss;
-    int player;
-    int x;
-    int y;
-    std::string sep;
-    std::string buf = buffer.substr(prev,next-prev);
-    std::cout << buf << std::endl;
-    if(buf.length()>0)
-    {
-      std::cout << buf << std::endl;
-      ss << buf;
-      ss >> player >> sep >> x >> y;
-      Vector2<int> pos(x,y); 
-      Stone stone(player,pos);
-      std::cout << "Got previous move: player: " << player << ", x: " << x << ", y: " << y <<std::endl;
-      Play(stone);
-    }
-    prev = next+1;
-    next = buffer.find_first_of("\n",next+1);
-  }
-  //std::cout << "done initializing board..." <<std::endl;
+  m_stonesPlayedNorm.clear();
+  m_board = Board(Vector2<int>(0, 0), Vector2<int>(boardSize.x, boardSize.y));
+  const FloatType boardNormX = m_board.maxs.x * kInternalBoardScale;
+  const FloatType boardNormY = m_board.maxs.y * kInternalBoardScale;
+  m_boardNorm = BoardNorm(Vector2<FloatType>(0, 0),
+                          Vector2<FloatType>(boardNormX, boardNormY));
 }
 
 bool Voronoi::Play(const Stone& stone)
 {
+  assert(stone.player == CurrentPlayer());
+  assert((stone.pos.x >= m_board.mins.x) && (stone.pos.y >= m_board.mins.y));
+  assert((stone.pos.x <= m_board.maxs.x) && (stone.pos.y <= m_board.maxs.y));
   // The move is valid only if it was not made already.
   if (std::find_if(m_stonesPlayed.begin(),
                    m_stonesPlayed.end(),
@@ -88,10 +69,6 @@ bool Voronoi::Play(const Stone& stone)
   {
     return false;
   }
-  assert(stone.player == CurrentPlayer());
-  // Stone within bounds.
-  assert((stone.pos.x >= m_board.mins.x) && (stone.pos.y >= m_board.mins.y));
-  assert((stone.pos.x <= m_board.maxs.x) && (stone.pos.y <= m_board.maxs.y));
   // Push the stone and the normalized stone.
   m_stonesPlayed.push_back(stone);
   const StoneNormalized::Position posNorm(stone.pos.x * kInternalBoardScale,
@@ -328,8 +305,8 @@ bool Voronoi::FortuneScores(ScoreList* scores) const
   // Run the legacy code to generate the Voronoi diagram.
   VoronoiDiagramGenerator diagram;
   const int numStones = static_cast<int>(m_stonesPlayedNorm.size());
-  std::vector<float> xCoords(numStones);
-  std::vector<float> yCoords(numStones);
+  std::vector<double> xCoords(numStones);
+  std::vector<double> yCoords(numStones);
   for (int stoneIdx = 0; stoneIdx < numStones; ++stoneIdx)
   {
     xCoords[stoneIdx] = m_stonesPlayedNorm[stoneIdx].pos.x;
@@ -344,8 +321,8 @@ bool Voronoi::FortuneScores(ScoreList* scores) const
   typedef std::vector<Segment2<FloatType> > EdgeList;
   EdgeList edges;
   edges.reserve(numStones * numStones);
-  Vector2<FloatType> p0;
-  Vector2<FloatType> p1;
+  Vector2<double> p0;
+  Vector2<double> p1;
   typedef std::deque<const Segment2<FloatType>*> SegmentQueue;
   std::vector<SegmentQueue> stoneEdges(numStones);
   std::for_each(stoneEdges.begin(), stoneEdges.end(),
@@ -358,7 +335,11 @@ bool Voronoi::FortuneScores(ScoreList* scores) const
 //              << "(" << p1.x << ", " << p1.y << ") "
 //              << " : Stones {" << stoneIndices[0] << " "
 //              << stoneIndices[1] << "}" << std::endl;
-    const Segment2<FloatType> segment(p0, p1);
+    const Vector2<FloatType> p0_flt(static_cast<float>(p0.x),
+                                    static_cast<float>(p0.y));
+    const Vector2<FloatType> p1_flt(static_cast<float>(p1.x),
+                                    static_cast<float>(p1.y));
+    const Segment2<FloatType> segment(p0_flt, p1_flt);
     // Filter min edge length squared based on board size.
     if (minLengthSqFilter(segment))
     {

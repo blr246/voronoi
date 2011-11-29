@@ -1,164 +1,153 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <string.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <netdb.h> 
-#include <iostream>
-#include <string>
 #include "util.h"
 #include "player.h"
 #include "voronoi_core.h"
 #include "geometry.h"
+#include <iostream>
+#include <string>
+#include <string.h>
+#ifdef WIN32
+#include <winsock.h>
+#else
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <sys/select.h>
+#include <netinet/in.h>
+#include <netdb.h> 
+#endif
 
-int g_num_turns;
-int g_num_players;
-int g_my_player;
-enum {BoardDim=1000,};
+using namespace hps;
 
-std::string boardState;
-std::string boardStart;
-std::string boardEnd;
+/// <summary> Predefined game board dimension. </summary>
+enum { BoardDim = 1000, };
+/// <summary> Buffer size used to read from server socket. </summery>
+enum { SockBufferSize = 1024, };
 
-hps::voronoi::Voronoi* game;
-
-void parseMessage( char buffer[1024] ) {
-    
-    /* Parsing the GLOBALS */
-    sscanf( buffer, "GLOBALS\nTotal Turns: %d\nTotal Players: %d\nYou are Player: %d", 
-            &g_num_turns, &g_num_players, &g_my_player );
-        
-    char* boardStateConst = "BOARD STATE";
-    char* boardStateBuffer = strstr(buffer,boardStateConst);
-    boardStateBuffer = boardStateBuffer + strlen(boardStateConst);
-    
-    boardState = std::string(boardStateBuffer);
-    boardEnd = "Enter New position \"X Y\":";
-    boardStart = "BOARD STATE";
-}
-
-
-void error(const char *msg)
+/// <summary> Write a string message to the socket. </summary>
+inline bool Write(const int sockfd, const std::string& data)
 {
-    perror(msg);
-    exit(0);
+  assert(!data.empty());
+  const size_t sent = send(sockfd, data.c_str(), data.size(), 0);
+  return sent == data.size();
 }
 
-/* Check for the end of the message (which is '":') */
-int isEndOfMessage( char buffer[1024] ) {
-    if ( buffer[strlen(buffer)-2] == '\"' && 
-	         buffer[strlen(buffer)-1] == ':' ) 
- 	    return 1;
-    else
-      return 0;
-}
-
-void writeSocket ( int sockfd, char buffer[1024] ) {
-    int n;
-
-    //bzero(buffer,1024);
-    memset( buffer, 0, sizeof(char)*1024);
-    
-    hps::voronoi::Player* player = new hps::voronoi::GreedyPlayer(*game,30);
-    player->Play(*game);
-    std::string move = game->Compute();
-    //std::cout << "returned from player..." <<std::endl;
-    //std::cout << move << std::endl;
-    buffer = const_cast<char*>(move.c_str());
-    /* TODO: Place your new position here (e.g. "100 500" ) */
-    //fputs(buffer,1023,stdin);
-    n = write(sockfd,buffer,strlen(buffer));
-    if (n < 0) 
-         error("ERROR writing to socket");
-}
-
-void readSocket ( int sockfd, char buffer[1024] ) {
-    int n;
-    char tmp[256];
-
-    memset( tmp, 0, sizeof(char)*sizeof(tmp));
-    strcpy( buffer, "" );
-    /* Keep reading until we get to the end of the message */
-    while ( !isEndOfMessage( buffer ) && (n = read(sockfd,tmp,sizeof(tmp) - 1)) != 0 ) {
-      strcat(buffer, tmp);
-      memset( tmp, 0, sizeof(char)*sizeof(tmp));
-    }
-    if (n < 0) 
-         error("ERROR reading from socket");
-    
-    /* Print message in screen */
-    //printf( "buffer: %s", buffer );
-
-    /* Parse message */
-    parseMessage( buffer );
-    
-    
-}
-
-void startGame()
+/// <summary> Read all available data on the socket. </summary>
+int Read(const int sockfd, const int timeoutMs, std::string* data)
 {
-    hps::geometry::Vector2<int> v(BoardDim,BoardDim);
-    game = new hps::voronoi::Voronoi(g_num_players,g_num_turns,v);
-    
-    if(boardState.length() > 0)
+  assert(data);
+  data->clear();
+
+  // Wait for first chunk?
+  fd_set read;
+  if (timeoutMs >= 0)
+  {
+    timeval timeout;
     {
-      game->InitBoard(boardState,boardStart,boardEnd);
+      timeout.tv_sec = timeoutMs / 1000;
+      timeout.tv_usec = 1000 * (timeoutMs % 1000);
     }
+    FD_ZERO(&read);
+    FD_SET(sockfd, &read);
+    const int ready = select(sockfd + 1, &read, NULL, NULL, &timeout);
+    if (ready < 1)
+    {
+      return 0;
+    }
+  }
 
+  // Read data until no more on the socket.
+  char buffer[SockBufferSize];
+  int numRead = 0;
+  for (;;)
+  {
+    // Read first chunk of data.
+    const int sizeRecv = recv(sockfd, buffer, sizeof(buffer), 0);
+    numRead += sizeRecv;
+    if (sizeRecv <= 0)
+    {
+      break;
+    }
+    *data = *data + std::string(buffer, buffer + sizeRecv);
+    // Any more data waiting?
+    FD_ZERO(&read);
+    FD_SET(sockfd, &read);
+    const int ready = select(sockfd + 1, &read, NULL, NULL, NULL);
+    if (ready < 1)
+    {
+      break;
+    }
+  }
+
+  return numRead;
 }
 
 int main(int argc, char *argv[])
 {
-    int sockfd, portno, i;
-    struct sockaddr_in serv_addr;
-    struct hostent *server;
-    char buffer[1024];
+#ifdef WIN32
+  WORD wsaRqdVersion = MAKEWORD(2, 0);
+  WSADATA wsaData;
+  WSAStartup(wsaRqdVersion, &wsaData);
+#endif
 
-    /* Check args */
-    if (argc < 3) {
-       fprintf(stderr,"usage %s hostname port\n", argv[0]);
-       exit(0);
-    }
+  // Check args.
+  if (argc < 3)
+  {
+    std::cerr << "Usage: " << argv[0] << " HOSTNAME PORT" << std::endl;
+    return 1;
+  }
 
-    /* Open port and start connection (hopefully the server will be waiting for you) */
-    portno = atoi(argv[2]);
-    sockfd = socket(AF_INET, SOCK_STREAM, 0);
-    if (sockfd < 0) 
-        error("ERROR opening socket");
-    server = gethostbyname(argv[1]);
-    if (server == NULL) {
-        fprintf(stderr,"ERROR, no such host\n");
-        exit(0);
-    }
-    memset((char *) &serv_addr, 0, sizeof(char) * sizeof(serv_addr));
-    serv_addr.sin_family = AF_INET;
-    bcopy((char *)server->h_addr, 
-         (char *)&serv_addr.sin_addr.s_addr,
-         server->h_length);
-    serv_addr.sin_port = htons(portno);
-    if (connect(sockfd,(struct sockaddr *) &serv_addr,sizeof(serv_addr)) < 0) 
-        error("ERROR connecting");
+  // Open port and start connection (server should be listening).
+  const short portno = static_cast<short>(atoi(argv[2]));
+  const int sockfd = socket(AF_INET, SOCK_STREAM, 0);
+  if (sockfd < 0) 
+  {
+    std::cerr << "ERROR: failed opening socket." << std::endl;
+    return 1;
+  }
+  const struct hostent* server = gethostbyname(argv[1]);
+  if (NULL == server)
+  {
+    std::cerr << "ERROR: no such host." << std::endl;
+    return 1;
+  }
+  struct sockaddr_in serv_addr;
+  memset(&serv_addr, 0, sizeof(serv_addr));
+  serv_addr.sin_family = AF_INET;
+  memcpy(&serv_addr.sin_addr.s_addr, server->h_addr, server->h_length);
+  serv_addr.sin_port = htons(portno);
+  if (connect(sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) 
+  {
+    std::cerr << "ERROR: failed connecting to server." << std::endl;
+    return 1;
+  }
 
-    /* Read from socket */
-    readSocket( sockfd, buffer );
+  // Play until the server disconnects.
+  int roundsPlayed = 0;
+  std::string stateString;
+  while (Read(sockfd, -1, &stateString) > 0)
+  {
+    Voronoi game;
+    int myPlayer;
+    Parser::Parse(stateString, Voronoi::BoardSize(BoardDim, BoardDim),
+                  &game, &myPlayer);
+    GreedyPlayer player(game, 30);
+    player.Play(game);
+    std::stringstream ssMove;
+    const Stone& stone = game.LastStone();
+    ssMove << stone.pos.x << " " << stone.pos.y;
+    Write(sockfd, ssMove.str());
+    ++roundsPlayed;
+  }
+  std::cout << "Played " << roundsPlayed << " rounds." << std::endl;
 
-    startGame();
-    
-    /* Write into socket */
-    writeSocket( sockfd, buffer );
+  // Disconnect.
+#ifdef WIN32
+  closesocket(sockfd);
+  WSACleanup();
+#else
+  close(sockfd);
+#endif
 
-    
-    /* Now we know how many turns we have, let's repeat */
-    for ( i = 1; i < g_num_turns; i++ ) {
-        readSocket( sockfd, buffer );
-        startGame();
-        writeSocket( sockfd, buffer );
-    }
-
-    close(sockfd);
-
-    return 0;
+  return 0;
 }
 

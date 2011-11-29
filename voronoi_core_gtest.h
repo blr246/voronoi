@@ -20,12 +20,11 @@ TEST(voronoi_core, Stone)
 TEST(voronoi_core, Voronoi)
 {
   enum { Players = 2, };
-  enum { StonesPerPlayer = 10, };
   enum { BoardDim = 1000, };
-  Voronoi game(Players, StonesPerPlayer, Voronoi::BoardSize(BoardDim, BoardDim));
+  Voronoi game;
+  game.Initialize(Players, Voronoi::BoardSize(BoardDim, BoardDim));
   // Verify params.
   EXPECT_EQ(Players, game.NumPlayers());
-  EXPECT_EQ(StonesPerPlayer, game.StonesPerPlayer());
   // Verify no plays.
   const Voronoi::StoneList& played = game.Played();
   EXPECT_EQ(0, played.size());
@@ -43,11 +42,11 @@ TEST(voronoi_core, Voronoi)
 TEST(voronoi_core, VoronoiScore)
 {
   enum { Players = 2, };
-  enum { StonesPerPlayer = 10, };
   enum { BoardDim = 1000, };
   // Single stone.
   {
-    Voronoi game(Players, StonesPerPlayer, Voronoi::BoardSize(BoardDim, BoardDim));
+    Voronoi game;
+    game.Initialize(Players, Voronoi::BoardSize(BoardDim, BoardDim));
     // Play one stone. Should be score of 100%.
     const Stone playStone(0, Stone::Position(RandBound(BoardDim + 1),
                                              RandBound(BoardDim + 1)));
@@ -63,7 +62,8 @@ TEST(voronoi_core, VoronoiScore)
     const FloatType expectScore = 0.5f * static_cast<FloatType>(BoardDim * BoardDim);
     // (0, 0) & (BoardDim, BoardDim)
     {
-      Voronoi game(Players, StonesPerPlayer, Voronoi::BoardSize(BoardDim, BoardDim));
+      Voronoi game;
+      game.Initialize(Players, Voronoi::BoardSize(BoardDim, BoardDim));
       game.Play(Stone(0, Stone::Position(0, 0)));
       game.Play(Stone(1, Stone::Position(BoardDim, BoardDim)));
       // Verify scoring.
@@ -74,7 +74,8 @@ TEST(voronoi_core, VoronoiScore)
     }
     // (0, BoardDim) & (BoardDim, 0)
     {
-      Voronoi game(Players, StonesPerPlayer, Voronoi::BoardSize(BoardDim, BoardDim));
+      Voronoi game;
+      game.Initialize(Players, Voronoi::BoardSize(BoardDim, BoardDim));
       game.Play(Stone(0, Stone::Position(0, BoardDim)));
       game.Play(Stone(1, Stone::Position(BoardDim, 0)));
       // Verify scoring.
@@ -85,7 +86,8 @@ TEST(voronoi_core, VoronoiScore)
     }
     // (0, 0) & (0, BoardDim)
     {
-      Voronoi game(Players, StonesPerPlayer, Voronoi::BoardSize(BoardDim, BoardDim));
+      Voronoi game;
+      game.Initialize(Players, Voronoi::BoardSize(BoardDim, BoardDim));
       game.Play(Stone(0, Stone::Position(0, 0)));
       game.Play(Stone(1, Stone::Position(0, BoardDim)));
       // Verify scoring.
@@ -96,7 +98,8 @@ TEST(voronoi_core, VoronoiScore)
     }
     // (BoardDim, 0) & (BoardDim, BoardDim)
     {
-      Voronoi game(Players, StonesPerPlayer, Voronoi::BoardSize(BoardDim, BoardDim));
+      Voronoi game;
+      game.Initialize(Players, Voronoi::BoardSize(BoardDim, BoardDim));
       game.Play(Stone(0, Stone::Position(BoardDim, 0)));
       game.Play(Stone(1, Stone::Position(BoardDim, BoardDim)));
       // Verify scoring.
@@ -109,7 +112,8 @@ TEST(voronoi_core, VoronoiScore)
   // Four points diagonal.
   {
     const FloatType expectScore = 0.5f * static_cast<FloatType>(BoardDim * BoardDim);
-    Voronoi game(Players, StonesPerPlayer, Voronoi::BoardSize(BoardDim, BoardDim));
+    Voronoi game;
+    game.Initialize(Players, Voronoi::BoardSize(BoardDim, BoardDim));
     game.Play(Stone(0, Stone::Position(0, 0)));
     game.Play(Stone(1, Stone::Position(BoardDim, 0)));
     game.Play(Stone(0, Stone::Position(BoardDim, BoardDim)));
@@ -123,7 +127,8 @@ TEST(voronoi_core, VoronoiScore)
   // Four points.
   {
     const FloatType expectScore = 0.5f * static_cast<FloatType>(BoardDim * BoardDim);
-    Voronoi game(Players, StonesPerPlayer, Voronoi::BoardSize(BoardDim, BoardDim));
+    Voronoi game;
+    game.Initialize(Players, Voronoi::BoardSize(BoardDim, BoardDim));
     game.Play(Stone(0, Stone::Position(0, 0)));
     game.Play(Stone(1, Stone::Position(0, BoardDim)));
     game.Play(Stone(0, Stone::Position(BoardDim, 0)));
@@ -137,7 +142,8 @@ TEST(voronoi_core, VoronoiScore)
   // Four points quadrants.
   {
     const FloatType expectScore = 0.5f * static_cast<FloatType>(BoardDim * BoardDim);
-    Voronoi game(Players, StonesPerPlayer, Voronoi::BoardSize(BoardDim, BoardDim));
+    Voronoi game;
+    game.Initialize(Players, Voronoi::BoardSize(BoardDim, BoardDim));
     const int quaterDim = BoardDim / 4;
     game.Play(Stone(0, Stone::Position(quaterDim, quaterDim)));
     game.Play(Stone(1, Stone::Position(3 * quaterDim, quaterDim)));
@@ -152,7 +158,8 @@ TEST(voronoi_core, VoronoiScore)
   // Four points quadrants.
   {
     const FloatType expectScore = 0.5f * static_cast<FloatType>(BoardDim * BoardDim);
-    Voronoi game(Players, StonesPerPlayer, Voronoi::BoardSize(BoardDim, BoardDim));
+    Voronoi game;
+    game.Initialize(Players, Voronoi::BoardSize(BoardDim, BoardDim));
     const int eighthDim = BoardDim / 8;
     game.Play(Stone(0, Stone::Position(eighthDim, eighthDim)));
     game.Play(Stone(1, Stone::Position(BoardDim - eighthDim, BoardDim - eighthDim)));
@@ -175,7 +182,8 @@ TEST(voronoi_core, VoronoiScore)
     for (int iteration = 0; iteration < RandomIterations; ++iteration)
     {
       enum { Plays = 3, };
-      Voronoi game(Players, StonesPerPlayer, Voronoi::BoardSize(BoardDim, BoardDim));
+      Voronoi game;
+      game.Initialize(Players, Voronoi::BoardSize(BoardDim, BoardDim));
       // Play random stones.
       for (int playIdx = 0; playIdx < Plays; ++playIdx)
       {
@@ -217,7 +225,8 @@ TEST(voronoi_core, VoronoiScore)
     for (int iteration = 0; iteration < RandomIterations; ++iteration)
     {
       enum { Plays = 10, };
-      Voronoi game(Players, StonesPerPlayer, Voronoi::BoardSize(BoardDim, BoardDim));
+      Voronoi game;
+      game.Initialize(Players, Voronoi::BoardSize(BoardDim, BoardDim));
       // Play random stones.
       for (int playIdx = 0; playIdx < Plays; ++playIdx)
       {
@@ -261,7 +270,8 @@ TEST(voronoi_core, VoronoiScore)
     for (int iteration = 0; iteration < RandomIterations; ++iteration)
     {
       enum { Plays = 20, };
-      Voronoi game(Players, StonesPerPlayer, Voronoi::BoardSize(BoardDim, BoardDim));
+      Voronoi game;
+      game.Initialize(Players, Voronoi::BoardSize(BoardDim, BoardDim));
       // Play random stones.
       for (int playIdx = 0; playIdx < Plays; ++playIdx)
       {

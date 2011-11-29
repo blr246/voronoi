@@ -15,10 +15,10 @@ namespace geometry
 {
 
 /// <summary> A 2-dimensional vector. </summary>
-template <typename NumericType>
+template <typename NumericType_>
 struct Vector2
 {
-  typedef NumericType NumericType;
+  typedef NumericType_ NumericType;
   enum { Dim = 2, };
   Vector2() : x(0), y(0) {}
   Vector2(const NumericType x_, const NumericType y_) : x(x_), y(y_) {}

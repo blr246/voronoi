@@ -59,7 +59,7 @@ struct GreedyPlayer: public Player
     stone.player = game.CurrentPlayer();
 
     //Play in the center first
-    if(game.Played().size() == 0)
+    if(game.Played().empty())
     {
       Position p = game.GetBoardSize();
       stone.pos = Position(p.x/2, p.y/2);

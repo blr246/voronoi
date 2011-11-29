@@ -63,7 +63,7 @@ struct	Freelist
 
 struct Point	
 {
-	float x,y;
+	double x,y;
 };
 
 // structure used both for sites and for vertices 
@@ -78,7 +78,7 @@ struct Site
 
 struct Edge	
 {
-	float   a,b,c;
+	double   a,b,c;
 	struct	Site 	*ep[2];
 	struct	Site	*reg[2];
 	int		edgenbr;
@@ -87,7 +87,7 @@ struct Edge
 
 struct GraphEdge
 {
-	float x1,y1,x2,y2;
+	double x1,y1,x2,y2;
   int siteIncides[2];
 	struct GraphEdge* next;
 };
@@ -102,7 +102,7 @@ struct Halfedge
 	int		ELrefcnt;
 	char	ELpm;
 	struct	Site	*vertex;
-	float	ystar;
+	double	ystar;
 	struct	Halfedge *PQnext;
 };
 
@@ -115,14 +115,16 @@ public:
 	VoronoiDiagramGenerator();
 	~VoronoiDiagramGenerator();
 
-	bool generateVoronoi(float *xValues, float *yValues, int numPoints, float minX, float maxX, float minY, float maxY, float minDist=0);
+	bool generateVoronoi(double *xValues, double *yValues, int numPoints,
+                       double minX, double maxX, double minY, double maxY,
+                       double minDist=0);
 
 	void resetIterator()
 	{
 		iteratorEdges = allEdges;
 	}
 
-	bool getNext(float& x1, float& y1, float& x2, float& y2, int stoneIndices[])
+	bool getNext(double& x1, double& y1, double& x2, double& y2, int stoneIndices[])
 	{
 		if(iteratorEdges == 0)
 			return false;
@@ -158,7 +160,6 @@ private:
 	void freeinit(struct Freelist *fl,int size);
 	void makefree(struct Freenode *curr,struct Freelist *fl);
 	void geominit();
-	void plotinit();
 	bool voronoi(int triangulate);
 	void ref(struct Site *v);
 	void deref(struct Site *v);
@@ -170,7 +171,7 @@ private:
 	void makevertex(struct Site *v);
 	void out_triple(struct Site *s1, struct Site *s2,struct Site * s3);
 
-	void PQinsert(struct Halfedge *he,struct Site * v, float offset);
+	void PQinsert(struct Halfedge *he,struct Site * v, double offset);
 	void PQdelete(struct Halfedge *he);
 	bool ELinitialize();
 	void ELinsert(struct	Halfedge *lb, struct Halfedge *newHe);
@@ -186,20 +187,18 @@ private:
 
 	struct Site *rightreg(struct Halfedge *he);
 	struct Edge *bisect(struct	Site *s1,struct	Site *s2);
-	float dist(struct Site *s,struct Site *t);
+	double dist(struct Site *s,struct Site *t);
 	struct Site *intersect(struct Halfedge *el1, struct Halfedge *el2, struct Point *p=0);
 
-	void out_bisector(struct Edge *e);
-	void out_ep(struct Edge *e);
 	void out_vertex(struct Site *v);
 	struct Site *nextone();
 
-	void pushGraphEdge(float x1, float y1, float x2, float y2, Site* sites[]);
+	void pushGraphEdge(double x1, double y1, double x2, double y2, Site* sites[]);
 
 	void openpl();
-	void line(float x1, float y1, float x2, float y2, Site* sites[]);
-	void circle(float x, float y, float radius);
-	void range(float minX, float minY, float maxX, float maxY);
+	void line(double x1, double y1, double x2, double y2, Site* sites[]);
+	void circle(double x, double y, double radius);
+	void range(double minX, double minY, double maxX, double maxY);
 
 
 	struct  Freelist	hfl;
@@ -207,7 +206,7 @@ private:
 	int 	ELhashsize;
 
 	int		triangulate, sorted, plot, debug;
-	float	xmin, xmax, ymin, ymax, deltax, deltay;
+	double	xmin, xmax, ymin, ymax, deltax, deltay;
 
 	struct	Site	*sites;
 	int		nsites;
@@ -225,10 +224,10 @@ private:
 	int		PQmin;
 
 	int		ntry, totalsearch;
-	float	pxmin, pxmax, pymin, pymax, cradius;
+	double	pxmin, pxmax, pymin, pymax, cradius;
 	int		total_alloc;
 
-	float borderMinX, borderMaxX, borderMinY, borderMaxY;
+	double borderMinX, borderMaxX, borderMinY, borderMaxY;
 
 	FreeNodeArrayList* allMemoryList;
 	FreeNodeArrayList* currentMemoryBlock;
@@ -236,7 +235,7 @@ private:
 	GraphEdge* allEdges;
 	GraphEdge* iteratorEdges;
 
-	float minDistanceBetweenSites;
+	double minDistanceBetweenSites;
 	
 };
 

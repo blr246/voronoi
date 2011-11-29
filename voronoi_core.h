@@ -58,9 +58,10 @@ public:
   /// <summary> A list of stones with normalized coordinates. </summary>
   typedef std::vector<StoneNormalized> StoneNormalizedList;
 
-  /// <summary> Create a Voronoi game. </summary>
-  Voronoi(const int players, const int stonesPerPlayer,
-          const BoardSize& boardSize);
+  Voronoi();
+
+  /// <summary> Initialize a Voronoi game. </summary>
+  void Initialize(const int players, const BoardSize& boardSize);
 
   /// <summary> Play a single stone. </summary>
   /// <remarks>
@@ -78,22 +79,17 @@ public:
 
   /// <summary> Compute the score for all players. </summary>
   bool Scores(ScoreList* scores) const;
-  bool FortuneScores(ScoreList* scores) const;
-
-  /// <summary> Get number of players. </summary>
-  inline int NumPlayers() const
-  {
-    return m_players;
-  }
 
   /// <summary> Get current player. </summary>
   inline int CurrentPlayer() const
   {
     StoneList played = Played();
-    if(played.size() == 0)
+    if(played.empty())
     {
       return 0;
-    }else{
+    }
+    else
+    {
       int lastPlayer = Played().back().player;
       int currentPlayer = (lastPlayer + 1) % m_players;
       assert(currentPlayer >= 0);
@@ -102,39 +98,42 @@ public:
     }
   }
 
-  /// <summary> Get initial number of stones per player. </summary>
-  inline int StonesPerPlayer() const
+  /// <summary> Get number of players. </summary>
+  inline int NumPlayers() const
   {
-    return m_stonesPerPlayer;
+    return m_players;
   }
-
-  inline BoardSize GetBoardSize() const
+  /// <summary> Access board size. </summary>
+  inline const BoardSize& GetBoardSize() const
   {
     return m_board.maxs;
   }
-
-  inline Board GetBoard() const
+  /// <summary> Access game board. </summary>
+  inline const Board& GetBoard() const
   {
     return m_board;
   }
-
-  void InitBoard(std::string buffer, std::string start, std::string end);
-  
-  inline std::string Compute()
+  /// <summary> Access last stone played. </summary>
+  inline const Stone& LastStone() const
   {
-    int x = m_stonesPlayed.back().pos.x;
-    int y = m_stonesPlayed.back().pos.y;
-    std::stringstream ss;
-    ss << x << " " << y;
-    return ss.str();
+    return m_stonesPlayed.back();
   }
 
 private:
+  /// <summary> Compute scores using Fortune's algorithm. </summary>
+  /// <remarks>
+  ///   <para> This method may fail due to the error sensitivity of the
+  ///     geometric sweep objects.
+  ///   </para>
+  /// </remarks>
+  bool FortuneScores(ScoreList* scores) const;
+
   /// <summary> Number of players. </summary>
   int m_players;
-  /// <summary> Number of stones per player. </summary>
-  int m_stonesPerPlayer;
   /// <summary> Stones played so far. </summary>
+  /// <remarks>
+  ///   <para> Must be mutable since polygons updated suring scoring. </para>
+  /// </remarks>
   mutable StoneList m_stonesPlayed;
   /// <summary> Stones played so far in normalized coordinates. </summary>
   StoneNormalizedList m_stonesPlayedNorm;
@@ -143,7 +142,6 @@ private:
   /// <summary> The normalized game board. </summary>
   BoardNorm m_boardNorm;
 };
-
 
 struct Tile
 {
