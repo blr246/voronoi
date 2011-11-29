@@ -63,6 +63,8 @@ int Read(const int sockfd, const int timeoutMs, std::string* data)
     // Read first chunk of data.
     const int sizeRecv = recv(sockfd, buffer, sizeof(buffer), 0);
     numRead += sizeRecv;
+    timeval timeout;
+    memset(&timeout, 0, sizeof(timeout));
     if (sizeRecv <= 0)
     {
       break;
@@ -71,7 +73,7 @@ int Read(const int sockfd, const int timeoutMs, std::string* data)
     // Any more data waiting?
     FD_ZERO(&read);
     FD_SET(sockfd, &read);
-    const int ready = select(sockfd + 1, &read, NULL, NULL, NULL);
+    const int ready = select(sockfd + 1, &read, NULL, NULL, &timeout);
     if (ready < 1)
     {
       break;
