@@ -128,6 +128,11 @@ int main(int argc, char *argv[])
   std::string stateString;
   while (Read(sockfd, -1, &stateString) > 0)
   {
+    // Wait for primmadonna server to end.
+    if (stateString.find("END"))
+    {
+      break;
+    }
     Voronoi game;
     int myPlayer;
     Parser::Parse(stateString, Voronoi::BoardSize(BoardDim, BoardDim),
@@ -141,6 +146,9 @@ int main(int argc, char *argv[])
     ++roundsPlayed;
   }
   std::cout << "Played " << roundsPlayed << " rounds." << std::endl;
+
+  // Wait for primmadonna server to end.
+  Read(sockfd, -1, &stateString);
 
   // Disconnect.
 #ifdef WIN32

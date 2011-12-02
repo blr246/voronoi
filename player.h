@@ -1,10 +1,11 @@
 #ifndef _HPS_VORONOI_PLAYER_H_
 #define _HPS_VORONOI_PLAYER_H_
-#include"rand_bound.h"
 #include "voronoi_core.h"
+#include "alphabetapruning.h"
+#include "rand_bound.h"
 #include <vector>
 #include <algorithm>
-#include "rand_bound.h"
+#include <functional>
 
 namespace hps
 {
@@ -14,6 +15,7 @@ typedef Vector2<int> Position;
 
 struct Player
 {
+  virtual ~Player() {}
   virtual void Play(Voronoi& game) = 0;
 };
 
@@ -202,6 +204,98 @@ struct DefensivePlayer: public Player
     pos->x = pos->x/numVertices;
     pos->y = pos->y/numVertices;
   }
+};
+
+/// <summary> A grid-based alpha beta pruning player. </summary>
+struct AlphaBetaPlayer : public Player
+{
+  AlphaBetaPlayer(const int searchDepth_) : searchDepth(searchDepth_) {}
+  inline static int RandPlusMinus()
+  {
+    return (RandBound(2) > 0) ? 1 : -1;
+  }
+  /// <summary> Generate a grid of possible stones. </summary>
+  struct PlyGenerationFunction
+  {
+    PlyGenerationFunction(const int gridDim_) : gridDim(gridDim_) {}
+    void operator()(const Voronoi& game, Voronoi::StoneList* stones) const
+    {
+      assert(stones);
+      stones->clear();
+      Tile::TileList tiles;
+      Tile::Tiles(game, gridDim, &tiles);
+      const int divX_2 = tiles.front().XEdgeLength / 2;
+      const int divY_2 = tiles.front().YEdgeLength / 2;
+      const Voronoi::StoneList::const_iterator playedBegin = game.Played().begin();
+      const Voronoi::StoneList::const_iterator playedEnd = game.Played().end();
+      // Generate gridDim x gridDim moves.
+      for (int tileIdx = 0; tileIdx < static_cast<int>(tiles.size()); ++tileIdx)
+      {
+        for (int y = 1; y <= gridDim; ++y)
+        {
+          // Don't move on an occupied spot. Use random offset from tile center.
+          stones->push_back(Stone());
+          Stone& stone = stones->back();
+          stone.player = game.CurrentPlayer();
+          bool posFound;
+          int xPlay = tiles[tileIdx].center.x;
+          int yPlay = tiles[tileIdx].center.y;
+          do
+          {
+            posFound = true;
+            int randOffsetX = RandPlusMinus() * RandBound(divX_2);
+            int randOffsetY = RandPlusMinus() * RandBound(divY_2);
+            stone.pos = Stone::Position(xPlay + randOffsetX, yPlay + randOffsetY);
+            for (Voronoi::StoneList::const_iterator sPlay = playedBegin;
+                 sPlay != playedEnd;
+                 ++sPlay)
+            {
+              if (sPlay->pos == stone.pos)
+              {
+                posFound = false;
+                break;
+              }
+            }
+          } while (!posFound);
+        }
+      }
+    }
+    int gridDim;
+  };
+
+  /// <summary> Compute the score for the current player. </summary>
+  struct BoardEvaulationFunction
+  {
+    BoardEvaulationFunction(const int playerNum_) : playerNum(playerNum_) {}
+    inline Voronoi::FloatType operator()(const Voronoi& game) const
+    {
+      Voronoi::ScoreList scores;
+      game.Scores(&scores);
+      return scores[playerNum];
+    }
+    int playerNum;
+  };
+
+  virtual void Play(Voronoi& game)
+  {
+    // Get the best move from alpha beta.
+    enum { ABGridDim = 5, };
+    const int totalStones = game.StonesPerPlayer() * game.NumPlayers();
+    const int stonesRemaining = totalStones - static_cast<int>(game.Played().size());
+    AlphaBetaPruning::Params params;
+    {
+      params.maxDepth = std::min(stonesRemaining, searchDepth);
+    }
+    Stone stone;
+    BoardEvaulationFunction evalFunc(game.CurrentPlayer());
+    AlphaBetaPruning::Run(&params, &game,
+                          PlyGenerationFunction(ABGridDim),
+                          &evalFunc,
+                          &stone);
+    game.Play(stone);
+  }
+
+  int searchDepth;
 };
 
 }

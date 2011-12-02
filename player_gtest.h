@@ -14,56 +14,137 @@ using namespace hps;
 TEST(Parser,BoardStates)
 {
   enum { BoardDim = 1000, };
-  const std::string stateString =
-    "GLOBALS\n"
-    "Total Turns: 10\n"
-    "Total Players: 2\n"
-    "You are Player: 0\n"
-    "BOARD STATE\n"
-    "0: 300 400\n"
-    "1: 400 500\n"
-    "0: 600 700\n"
-    "1: 800 900\n"
-    "0: 450 600\n"
-    "1: 900 678\n"
-    "Enter New position \"X Y\":";
+  {
+    const std::string stateString =
+      "GLOBALS\n"
+      "Total Turns: 10\n"
+      "Total Players: 2\n"
+      "You are Player: 0\n"
+      "\n"
+      "PLAYER SCORES\n"
+      "0: 0\n"
+      "1: 0\n"
+      "\n"
+      "BOARD STATE\n"
+      "\n"
+      "Enter New position \"X Y\":";
+    Voronoi game;
+    int myPlayer;
+    Parser::Parse(stateString, Voronoi::BoardSize(BoardDim, BoardDim),
+                  &game, &myPlayer);
+    ASSERT_EQ(0, game.Played().size());
+  }
+  {
+    const std::string stateString =
+      "GLOBALS\n"
+      "Total Turns: 10\n"
+      "Total Players: 2\n"
+      "You are Player: 0\n"
+      "\n"
+      "PLAYER SCORES\n"
+      "0: 0\n"
+      "1: 0\n"
+      "\n"
+      "BOARD STATE\n"
+      "0: 300 400\n"
+      "1: 400 500\n"
+      "0: 600 700\n"
+      "1: 800 900\n"
+      "0: 450 600\n"
+      "1: 900 678\n"
+      "\n"
+      "Enter New position \"X Y\":";
+    Voronoi game;
+    int myPlayer;
+    Parser::Parse(stateString, Voronoi::BoardSize(BoardDim, BoardDim),
+                  &game, &myPlayer);
+    ASSERT_EQ(6, game.Played().size());
+    // "0: 300 400\n"
+    Voronoi::StoneList::const_iterator stone = game.Played().begin();
+    EXPECT_EQ(0, stone->player);
+    EXPECT_EQ(Vector2<int>(300, 400), stone->pos);
+    // "1: 400 500\n"
+    ++stone;
+    EXPECT_EQ(1, stone->player);
+    EXPECT_EQ(Vector2<int>(400, 500), stone->pos);
+    // "0: 600 700\n"
+    ++stone;
+    EXPECT_EQ(0, stone->player);
+    EXPECT_EQ(Vector2<int>(600, 700), stone->pos);
+    // "1: 800 900\n"
+    ++stone;
+    EXPECT_EQ(1, stone->player);
+    EXPECT_EQ(Vector2<int>(800, 900), stone->pos);
+    // "0: 450 600\n"
+    ++stone;
+    EXPECT_EQ(0, stone->player);
+    EXPECT_EQ(Vector2<int>(450, 600), stone->pos);
+    // "1: 900 678\n"
+    ++stone;
+    EXPECT_EQ(1, stone->player);
+    EXPECT_EQ(Vector2<int>(900, 678), stone->pos);
+  }
+}
+
+TEST(AlphaBetaPlayer, DISABLED_Play)
+{
+  enum { Players = 2, };
+  enum { BoardDim = 1000, };
+  enum { StonesPerPlayer = 10, };
   Voronoi game;
-  int myPlayer;
-  Parser::Parse(stateString, Voronoi::BoardSize(BoardDim, BoardDim),
-                &game, &myPlayer);
-  ASSERT_EQ(6, game.Played().size());
-  // "0: 300 400\n"
-  Voronoi::StoneList::const_iterator stone = game.Played().begin();
-  EXPECT_EQ(0, stone->player);
-  EXPECT_EQ(Vector2<int>(300, 400), stone->pos);
-  // "1: 400 500\n"
-  ++stone;
-  EXPECT_EQ(1, stone->player);
-  EXPECT_EQ(Vector2<int>(400, 500), stone->pos);
-  // "0: 600 700\n"
-  ++stone;
-  EXPECT_EQ(0, stone->player);
-  EXPECT_EQ(Vector2<int>(600, 700), stone->pos);
-  // "1: 800 900\n"
-  ++stone;
-  EXPECT_EQ(1, stone->player);
-  EXPECT_EQ(Vector2<int>(800, 900), stone->pos);
-  // "0: 450 600\n"
-  ++stone;
-  EXPECT_EQ(0, stone->player);
-  EXPECT_EQ(Vector2<int>(450, 600), stone->pos);
-  // "1: 900 678\n"
-  ++stone;
-  EXPECT_EQ(1, stone->player);
-  EXPECT_EQ(Vector2<int>(900, 678), stone->pos);
+  game.Initialize(Players, StonesPerPlayer, Voronoi::BoardSize(BoardDim, BoardDim));
+  AlphaBetaPlayer p(3);
+  
+  EXPECT_EQ(0, game.Played().size());
+
+  p.Play(game);
+
+  EXPECT_EQ(1, game.Played().size());
+
+  p.Play(game);
+  EXPECT_EQ(2, game.Played().size());
+}
+
+TEST(AlphaBetaPlayerVsGreedyPlayer, Play)
+{
+  enum { Players = 2, };
+  enum { StonesPerPlayer = 10, };
+  enum { BoardDim = 1000, };
+  enum { GreedyPlayerTiles = 30};
+  enum { NumGames = 100};
+  for (int gameIdx = 0; gameIdx < NumGames; ++gameIdx)
+  {
+    Voronoi game;
+    game.Initialize(Players, StonesPerPlayer, Voronoi::BoardSize(BoardDim, BoardDim));
+    AlphaBetaPlayer abPlayer(3);
+    GreedyPlayer gPlayer(game, GreedyPlayerTiles);
+    for (int stoneIdx = 0; stoneIdx < StonesPerPlayer; ++stoneIdx)
+    {
+      abPlayer.Play(game);
+      gPlayer.Play(game);
+    }
+    Voronoi::ScoreList scores;
+    game.Scores(&scores);
+    ASSERT_EQ(2, scores.size());
+    EXPECT_GT(scores[0], scores[1]);
+    if (scores[0] > scores[1])
+    {
+      std::cout << "AlphaBeta wins." << std::endl;
+    }
+    else
+    {
+      std::cout << "Shite, AlphaBeta loses." << std::endl;
+    }
+  }
 }
 
 TEST(RandomPlayer, Play)
 {
   enum { Players = 2, };
   enum { BoardDim = 1000, };
+  enum { StonesPerPlayer = 10, };
   Voronoi game;
-  game.Initialize(Players, Voronoi::BoardSize(BoardDim, BoardDim));
+  game.Initialize(Players, StonesPerPlayer, Voronoi::BoardSize(BoardDim, BoardDim));
   RandomPlayer p;
   
   EXPECT_EQ(0, game.Played().size());
@@ -208,9 +289,10 @@ TEST(Tile, Tiles)
   
   enum { Players = 2, };
   enum { BoardDim = 1000, };
+  enum { StonesPerPlayer = 10, };
 
   Voronoi game;
-  game.Initialize(Players, Voronoi::BoardSize(BoardDim, BoardDim));
+  game.Initialize(Players, StonesPerPlayer, Voronoi::BoardSize(BoardDim, BoardDim));
 
   std::vector<Tile> tiles;
   Tile::Tiles(game, 1, &tiles);
@@ -232,9 +314,10 @@ TEST(Tile, UnplayedTiles)
   
   enum { Players = 2, };
   enum { BoardDim = 1000, };
+  enum { StonesPerPlayer = 10, };
 
   Voronoi game;
-  game.Initialize(Players, Voronoi::BoardSize(BoardDim, BoardDim));
+  game.Initialize(Players, StonesPerPlayer, Voronoi::BoardSize(BoardDim, BoardDim));
 
   std::vector<Tile> tiles;
   Tile::UnplayedTiles(game, 4, &tiles);
@@ -276,7 +359,7 @@ TEST(GreedyPlayer, VersusRandomPlayer)
   for(int i = 0; i < NumGames; i++)
   {
     Voronoi game;
-    game.Initialize(Players, Voronoi::BoardSize(BoardDim, BoardDim));
+    game.Initialize(Players, StonesPerPlayer, Voronoi::BoardSize(BoardDim, BoardDim));
     GreedyPlayer gp(game, GreedyPlayerTiles);
     RandomPlayer rp;
     for(int i = 0; i < StonesPerPlayer; i++)
@@ -293,7 +376,7 @@ TEST(GreedyPlayer, VersusRandomPlayer)
   for(int i = 0; i < NumGames; i++)
   {
     Voronoi game;
-    game.Initialize(Players, Voronoi::BoardSize(BoardDim, BoardDim));
+    game.Initialize(Players, StonesPerPlayer, Voronoi::BoardSize(BoardDim, BoardDim));
     GreedyPlayer gp(game, GreedyPlayerTiles);
     RandomPlayer rp;
     for(int i = 0; i < StonesPerPlayer; i++)

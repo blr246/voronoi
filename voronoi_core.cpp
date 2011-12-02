@@ -37,6 +37,7 @@ struct StonePositionsEqual
 
 Voronoi::Voronoi()
 : m_players(0),
+  m_stonesPerPlayer(0),
   m_stonesPlayed(),
   m_stonesPlayedNorm(),
   m_board(Vector2<int>(0, 0), Vector2<int>(1000, 1000)),
@@ -45,9 +46,11 @@ Voronoi::Voronoi()
                                  m_board.maxs.y * kInternalBoardScale))
 {}
 
-void Voronoi::Initialize(const int players, const BoardSize& boardSize)
+void Voronoi::Initialize(const int players, const int stonesPerPlayer,
+                         const BoardSize& boardSize)
 {
   m_players = players; 
+  m_stonesPerPlayer = stonesPerPlayer;
   m_stonesPlayed.clear();
   m_stonesPlayedNorm.clear();
   m_board = Board(Vector2<int>(0, 0), Vector2<int>(boardSize.x, boardSize.y));
@@ -60,6 +63,7 @@ void Voronoi::Initialize(const int players, const BoardSize& boardSize)
 bool Voronoi::Play(const Stone& stone)
 {
   assert(stone.player == CurrentPlayer());
+  assert((m_players * m_stonesPerPlayer) > static_cast<int>(m_stonesPlayed.size()));
   assert((stone.pos.x >= m_board.mins.x) && (stone.pos.y >= m_board.mins.y));
   assert((stone.pos.x <= m_board.maxs.x) && (stone.pos.y <= m_board.maxs.y));
   // The move is valid only if it was not made already.

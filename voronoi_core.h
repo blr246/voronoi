@@ -61,7 +61,8 @@ public:
   Voronoi();
 
   /// <summary> Initialize a Voronoi game. </summary>
-  void Initialize(const int players, const BoardSize& boardSize);
+  void Initialize(const int players, const int stonesPerPlayer,
+                  const BoardSize& boardSize);
 
   /// <summary> Play a single stone. </summary>
   /// <remarks>
@@ -103,6 +104,10 @@ public:
   {
     return m_players;
   }
+  inline int StonesPerPlayer() const
+  {
+    return m_stonesPerPlayer;
+  }
   /// <summary> Access board size. </summary>
   inline const BoardSize& GetBoardSize() const
   {
@@ -130,6 +135,8 @@ private:
 
   /// <summary> Number of players. </summary>
   int m_players;
+  /// <summary> Stones to play per player. </summary>
+  int m_stonesPerPlayer;
   /// <summary> Stones played so far. </summary>
   /// <remarks>
   ///   <para> Must be mutable since polygons updated suring scoring. </para>

@@ -91,7 +91,7 @@ struct Parser
     assert("You are Player" == key);
 
     // Init game.
-    game->Initialize(numPlayers, boardSize);
+    game->Initialize(numPlayers, numTurns, boardSize);
     *myPlayer = playerNum;
 
     // Ignore scores.
