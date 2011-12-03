@@ -175,18 +175,23 @@ struct Tile
 
   static void Tiles(const Voronoi& game, const int tilesPerSide, TileList *tiles)
   {
-    assert(tiles->size() == 0);
+    assert(tiles->empty());
     assert(tilesPerSide > 0);
     Position boardSize = game.GetBoardSize();
 
-    int xIncrement = boardSize.x/tilesPerSide;
-    int yIncrement = boardSize.x/tilesPerSide;
+    const float xIncrement = boardSize.x / static_cast<float>(tilesPerSide);
+    const float yIncrement = boardSize.x / static_cast<float>(tilesPerSide);
+    const int xSizeTrunc = static_cast<int>(xIncrement);
+    const int ySizeTrunc = static_cast<int>(yIncrement);
 
-    for(int x = xIncrement/2; x < boardSize.x; x+= xIncrement)
+    for(float x = xIncrement / 2; x < boardSize.x; x+= xIncrement)
     {
-      for(int y = yIncrement/2; y < boardSize.y; y+= yIncrement)
+      for(float y = yIncrement / 2; y < boardSize.y; y+= yIncrement)
       {
-        tiles->push_back(Tile(Position(x, y),xIncrement, yIncrement));
+        const int xRound = static_cast<int>(x + 0.5f);
+        const int yRound = static_cast<int>(y + 0.5f);
+        tiles->push_back(Tile(Position(xRound, yRound),
+                              xSizeTrunc, ySizeTrunc));
       }
     }
   }

@@ -86,23 +86,60 @@ TEST(Parser,BoardStates)
   }
 }
 
-TEST(AlphaBetaPlayer, DISABLED_Play)
+TEST(Tiles, DISABLED_LotsOfTiles)
 {
-  enum { Players = 2, };
-  enum { BoardDim = 1000, };
-  enum { StonesPerPlayer = 10, };
   Voronoi game;
-  game.Initialize(Players, StonesPerPlayer, Voronoi::BoardSize(BoardDim, BoardDim));
-  AlphaBetaPlayer p(3);
-  
-  EXPECT_EQ(0, game.Played().size());
+  for (int tilesPerSide = 1;
+       tilesPerSide <= game.GetBoardSize().x;
+       tilesPerSide += (game.GetBoardSize().x / 100))
+  {
+    Tile::TileList tiles;
+    Tile::Tiles(game, tilesPerSide, &tiles);
+    const Tile::Position& lastPos = tiles.back().center;
+    EXPECT_LE(lastPos.x + (tiles.back().XEdgeLength / 2), game.GetBoardSize().x);
+    EXPECT_LE(lastPos.y + (tiles.back().YEdgeLength / 2), game.GetBoardSize().y);
+  }
+}
 
-  p.Play(game);
+TEST(GreedyPlayerVsAlphaBetaPlayer, Play)
+{
+  // reissb -- 20111202 -- Can't play last with alphabeta until depth
+  //   can be one.
+  enum { Players = 2, };
+  enum { StonesPerPlayer = 10, };
+  enum { BoardDim = 1000, };
+  enum { GreedyPlayerTiles = 30};
+  enum { NumGames = 100};
+  for (int gameIdx = 0; gameIdx < NumGames; ++gameIdx)
+  {
+  Voronoi game;
+    game.Initialize(Players, StonesPerPlayer,
+                    Voronoi::BoardSize(BoardDim, BoardDim));
+    AlphaBetaPlayer abPlayer(2);
+    GreedyPlayer gPlayer(game, GreedyPlayerTiles);
+    Voronoi::ScoreList scores;
+    for (int stoneIdx = 0; stoneIdx < StonesPerPlayer; ++stoneIdx)
+    {
+      gPlayer.Play(game);
+      game.Scores(&scores);
+      std::cout << "Scores: " << scores[0] << ", " << scores[1] << std::endl;
 
-  EXPECT_EQ(1, game.Played().size());
-
-  p.Play(game);
-  EXPECT_EQ(2, game.Played().size());
+      abPlayer.Play(game);
+      game.Scores(&scores);
+      std::cout << "Scores: " << scores[0] << ", " << scores[1] << std::endl;
+    }
+    game.Scores(&scores);
+    ASSERT_EQ(2, scores.size());
+    EXPECT_GT(scores[1], scores[0]);
+    if (scores[1] > scores[0])
+    {
+      std::cout << "AlphaBeta wins." << std::endl;
+    }
+    else
+    {
+      std::cout << "Shite, AlphaBeta loses." << std::endl;
+    }
+  }
 }
 
 TEST(AlphaBetaPlayerVsGreedyPlayer, Play)
@@ -115,15 +152,21 @@ TEST(AlphaBetaPlayerVsGreedyPlayer, Play)
   for (int gameIdx = 0; gameIdx < NumGames; ++gameIdx)
   {
     Voronoi game;
-    game.Initialize(Players, StonesPerPlayer, Voronoi::BoardSize(BoardDim, BoardDim));
-    AlphaBetaPlayer abPlayer(3);
+    game.Initialize(Players, StonesPerPlayer,
+                    Voronoi::BoardSize(BoardDim, BoardDim));
+    AlphaBetaPlayer abPlayer(2);
     GreedyPlayer gPlayer(game, GreedyPlayerTiles);
+    Voronoi::ScoreList scores;
     for (int stoneIdx = 0; stoneIdx < StonesPerPlayer; ++stoneIdx)
     {
       abPlayer.Play(game);
+      game.Scores(&scores);
+      std::cout << "Scores: " << scores[0] << ", " << scores[1] << std::endl;
+
       gPlayer.Play(game);
+      game.Scores(&scores);
+      std::cout << "Scores: " << scores[0] << ", " << scores[1] << std::endl;
     }
-    Voronoi::ScoreList scores;
     game.Scores(&scores);
     ASSERT_EQ(2, scores.size());
     EXPECT_GT(scores[0], scores[1]);

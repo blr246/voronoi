@@ -123,29 +123,36 @@ int main(int argc, char *argv[])
     return 1;
   }
 
-  // Play until the server disconnects.
-  int roundsPlayed = 0;
+  // Read the first state.
   std::string stateString;
-  while (Read(sockfd, -1, &stateString) > 0)
+  if (Read(sockfd, -1, &stateString) > 0)
   {
-    // Wait for primmadonna server to end.
-    if (stateString.find("END"))
-    {
-      break;
-    }
+    // Initialize the player and state.
     Voronoi game;
     int myPlayer;
+    int roundsPlayed = 0;
     Parser::Parse(stateString, Voronoi::BoardSize(BoardDim, BoardDim),
                   &game, &myPlayer);
     GreedyPlayer player(game, 30);
-    player.Play(game);
-    std::stringstream ssMove;
-    const Stone& stone = game.LastStone();
-    ssMove << stone.pos.x << " " << stone.pos.y;
-    Write(sockfd, ssMove.str());
-    ++roundsPlayed;
+    // Play until the server disconnects.
+    do
+    {
+      // Is game over?
+      if (stateString.find("END"))
+      {
+        break;
+      }
+      Parser::Parse(stateString, Voronoi::BoardSize(BoardDim, BoardDim),
+                    &game, &myPlayer);
+      player.Play(game);
+      std::stringstream ssMove;
+      const Stone& stone = game.LastStone();
+      ssMove << stone.pos.x << " " << stone.pos.y;
+      Write(sockfd, ssMove.str());
+      ++roundsPlayed;
+    } while (Read(sockfd, -1, &stateString) > 0);
+    std::cout << "Played " << roundsPlayed << " rounds." << std::endl;
   }
-  std::cout << "Played " << roundsPlayed << " rounds." << std::endl;
 
   // Wait for primmadonna server to end.
   Read(sockfd, -1, &stateString);

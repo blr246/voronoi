@@ -6,6 +6,7 @@
 #include <vector>
 #include <algorithm>
 #include <functional>
+#include <numeric>
 
 namespace hps
 {
@@ -103,7 +104,8 @@ struct GreedyPlayer: public Player
     stone.pos = tiles.at(bestTileIt).center;
     game.Play(stone);
     tiles.erase(tiles.begin()+bestTileIt); // Remove the played tile;
-    std::cout << "Playing at: player: " << stone.player << ", x: " << stone.pos.x << ", y: " << stone.pos.y <<std::endl;
+    std::cout << "Playing at: player: " << stone.player
+              << ", x: " << stone.pos.x << ", y: " << stone.pos.y <<std::endl;
   }
 
   static float GameScore(const Voronoi& game)
@@ -231,33 +233,30 @@ struct AlphaBetaPlayer : public Player
       // Generate gridDim x gridDim moves.
       for (int tileIdx = 0; tileIdx < static_cast<int>(tiles.size()); ++tileIdx)
       {
-        for (int y = 1; y <= gridDim; ++y)
+        // Don't move on an occupied spot. Use random offset from tile center.
+        stones->push_back(Stone());
+        Stone& stone = stones->back();
+        stone.player = game.CurrentPlayer();
+        bool posFound;
+        int xPlay = tiles[tileIdx].center.x;
+        int yPlay = tiles[tileIdx].center.y;
+        do
         {
-          // Don't move on an occupied spot. Use random offset from tile center.
-          stones->push_back(Stone());
-          Stone& stone = stones->back();
-          stone.player = game.CurrentPlayer();
-          bool posFound;
-          int xPlay = tiles[tileIdx].center.x;
-          int yPlay = tiles[tileIdx].center.y;
-          do
+          posFound = true;
+          int randOffsetX = RandPlusMinus() * RandBound(divX_2);
+          int randOffsetY = RandPlusMinus() * RandBound(divY_2);
+          stone.pos = Stone::Position(xPlay + randOffsetX, yPlay + randOffsetY);
+          for (Voronoi::StoneList::const_iterator sPlay = playedBegin;
+               sPlay != playedEnd;
+               ++sPlay)
           {
-            posFound = true;
-            int randOffsetX = RandPlusMinus() * RandBound(divX_2);
-            int randOffsetY = RandPlusMinus() * RandBound(divY_2);
-            stone.pos = Stone::Position(xPlay + randOffsetX, yPlay + randOffsetY);
-            for (Voronoi::StoneList::const_iterator sPlay = playedBegin;
-                 sPlay != playedEnd;
-                 ++sPlay)
+            if (sPlay->pos == stone.pos)
             {
-              if (sPlay->pos == stone.pos)
-              {
-                posFound = false;
-                break;
-              }
+              posFound = false;
+              break;
             }
-          } while (!posFound);
-        }
+          }
+        } while (!posFound);
       }
     }
     int gridDim;
@@ -271,31 +270,46 @@ struct AlphaBetaPlayer : public Player
     {
       Voronoi::ScoreList scores;
       game.Scores(&scores);
-      return scores[playerNum];
+      const Voronoi::FloatType totalScore = std::accumulate(
+        scores.begin(), scores.end(), static_cast<Voronoi::FloatType>(0));
+      return scores[playerNum] / totalScore;
     }
     int playerNum;
   };
 
   virtual void Play(Voronoi& game)
   {
+    typedef Voronoi::FloatType FloatType;
+
+    std::cout << "Alphabeta player playing..." << std::endl;
     // Get the best move from alpha beta.
-    enum { ABGridDim = 5, };
+    enum { MaxOps = 512000, };
+    enum { MaxGridDim = 128, };
     const int totalStones = game.StonesPerPlayer() * game.NumPlayers();
-    const int stonesRemaining = totalStones - static_cast<int>(game.Played().size());
-    AlphaBetaPruning::Params params;
-    {
-      params.maxDepth = std::min(stonesRemaining, searchDepth);
-    }
+    const int stonesRemaining = totalStones -
+                                static_cast<int>(game.Played().size());
+    params.maxDepth = std::min(stonesRemaining, searchDepth);
+    const float gridDimSq = pow(MaxOps, 1.0f / params.maxDepth);
+    const int gridDim = std::min(std::min(static_cast<int>(sqrt(gridDimSq)),
+                                          game.GetBoardSize().x / 3),
+                                 static_cast<int>(MaxGridDim));
+    std::cout << "params.maxDepth: " << params.maxDepth << std::endl;
+    std::cout << "gridDim: " << gridDim << std::endl;
     Stone stone;
     BoardEvaulationFunction evalFunc(game.CurrentPlayer());
-    AlphaBetaPruning::Run(&params, &game,
-                          PlyGenerationFunction(ABGridDim),
-                          &evalFunc,
-                          &stone);
+    const FloatType minimax = AlphaBetaPruning::Run(&params, &game,
+                                                    PlyGenerationFunction(gridDim),
+                                                    &evalFunc,
+                                                    &stone);
     game.Play(stone);
+    std::cout << "Alphabeta got minimax " << minimax << " on stone "
+              << game.Played().size() << " of " << totalStones << std::endl;
+    std::cout << "Playing at: player: " << stone.player
+              << ", x: " << stone.pos.x << ", y: " << stone.pos.y <<std::endl;
   }
 
   int searchDepth;
+  AlphaBetaPruning::Params params;
 };
 
 }

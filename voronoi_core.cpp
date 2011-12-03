@@ -21,6 +21,9 @@ const FloatType kInternalBoardScale = static_cast<FloatType>(1000);
 const FloatType kInternalBoardScaleInv = 1 / kInternalBoardScale;
 const FloatType kVecEqSqBound = static_cast<FloatType>(0.3) * kInternalBoardScale;
 
+/// <summary> Scoring resolution for naive fallback. </summary>
+enum { NaiveScoreTilesPerSide = 250, };
+
 namespace detail
 {
 /// <summary> Test that a stone has the same position as a base stone. </summary>
@@ -604,7 +607,7 @@ bool Voronoi::Scores(ScoreList* scores) const
 {
   if(!FortuneScores(scores))
   {
-    std::cout << "Scoring failed, falling back to naive scoring." << std::endl;
+    //std::cout << "Scoring failed, falling back to naive scoring." << std::endl;
     NaiveScore(*this, scores);
     for (int stoneIdx = 0; stoneIdx < static_cast<int>(m_stonesPlayed.size()); ++stoneIdx)
     {
@@ -644,9 +647,8 @@ void NaiveScore(const Voronoi& game, Voronoi::ScoreList* scores)
 {
   Voronoi::StoneList stones = game.Played();
   Voronoi::Board board = game.GetBoard();
-  int tilesPerSide = 50;
   Tile::TileList tileList;
-  Tile::Tiles(game, tilesPerSide,&tileList);
+  Tile::Tiles(game, NaiveScoreTilesPerSide, &tileList);
   const int tileArea = tileList.front().XEdgeLength * tileList.front().YEdgeLength;
   scores->assign(game.NumPlayers(), 0.0f);
   ScoreNearestStone(stones, tileList, scores);
@@ -654,8 +656,6 @@ void NaiveScore(const Voronoi& game, Voronoi::ScoreList* scores)
   std::transform(scores->begin(), scores->end(), scores->begin(),
                  std::bind1st(std::multiplies<float>(), kScale));
 }
-
-
 
 }
 }

@@ -1,5 +1,5 @@
-#ifndef _NO_TIPPING_GAME_ALPHABETAPRUNING_H_
-#define _NO_TIPPING_GAME_ALPHABETAPRUNING_H_
+#ifndef _HPS_VORONOI_ALPHABETAPRUNING_H_
+#define _HPS_VORONOI_ALPHABETAPRUNING_H_
 #include "voronoi_core.h"
 #include <omp.h>
 
@@ -21,7 +21,7 @@ struct AlphaBetaPruning
         maxDepth(-1),
         bestMinimax(0),
         bestPlyIdx(-1),
-        victoryIsMine(NULL)
+        depthPlys()
     {}
 
     Voronoi game;
@@ -29,21 +29,23 @@ struct AlphaBetaPruning
     int maxDepth;
     FloatType bestMinimax;
     int bestPlyIdx;
-    volatile bool* victoryIsMine;
+    std::vector<Voronoi::StoneList> depthPlys;
   };
 
-  /// <summary> The parallel minimax parameters. </summary>
+  /// <summary> The parallel alphabeta parameters. </summary>
   struct Params
   {
     Params()
       : maxDepth(8),
         depth(0),
-        threadData()
+        threadData(),
+        rootPlys()
     {}
 
     int maxDepth;
     int depth;
     std::vector<ThreadParams> threadData;
+    Voronoi::StoneList rootPlys;
   };
 
   /// <summary> Run alpha-beta pruning to get a stone for the game. </summary>
@@ -58,17 +60,16 @@ struct AlphaBetaPruning
 
     int maxDepth = params->maxDepth;
     int& depth = params->depth;
-    assert(maxDepth > 1);
-    assert(depth < maxDepth);
+    assert(maxDepth >= 1);
+    depth = 0;
 //    std::cout << "AlphaBetaPruning::Run() : maxDepth = " << maxDepth
 //              << "." << std::endl;
-    ++depth;
 
     // Get the children of the current game.
-    Voronoi::StoneList plys;
+    Voronoi::StoneList& plys = params->rootPlys;
+    plys.clear();
     plyFunc(*game, &plys);
     assert(!plys.empty());
-    volatile bool victoryIsMine = false;
     FloatType minimax;
     {
       // Setup threads.
@@ -85,7 +86,7 @@ struct AlphaBetaPruning
             threadParams.depth = depth;
             threadParams.maxDepth = maxDepth;
             threadParams.game = *game;
-            threadParams.victoryIsMine = &victoryIsMine;
+            threadParams.depthPlys.resize(maxDepth - 1);
           }
         }
       }
@@ -93,13 +94,13 @@ struct AlphaBetaPruning
       const FloatType alpha = std::numeric_limits<FloatType>::min();
       const FloatType beta = std::numeric_limits<FloatType>::max();
       // Parallelize the first level.
-#pragma omp parallel for schedule(dynamic, 1)
-      for (int plyIdx = 0; plyIdx < static_cast<int>(plys.size()); ++plyIdx)
+      if (maxDepth > 1)
       {
-        const int threadIdx = omp_get_thread_num();
-        ThreadParams& threadParams = threadData[threadIdx];
-        if (!victoryIsMine)
+#pragma omp parallel for schedule(dynamic, 1)
+        for (int plyIdx = 0; plyIdx < static_cast<int>(plys.size()); ++plyIdx)
         {
+          const int threadIdx = omp_get_thread_num();
+          ThreadParams& threadParams = threadData[threadIdx];
           // Apply the ply for this game.
           const Stone& mkChildPly = plys[plyIdx];
           threadParams.game.Play(mkChildPly);
@@ -114,13 +115,27 @@ struct AlphaBetaPruning
           {
             threadParams.bestMinimax = minimax;
             threadParams.bestPlyIdx = plyIdx;
-            if (std::numeric_limits<FloatType>::max() == minimax)
-            {
-//              std::cout << "Thread " << threadIdx << " found victoryIsMine on "
-//                        << "ply " << plyIdx << " of " << plys.size()
-//                        << "." << std::endl;
-              victoryIsMine = true;
-            }
+          }
+        }
+      }
+      else
+      {
+#pragma omp parallel for schedule(static)
+        for (int plyIdx = 0; plyIdx < static_cast<int>(plys.size()); ++plyIdx)
+        {
+          const int threadIdx = omp_get_thread_num();
+          ThreadParams& threadParams = threadData[threadIdx];
+          // Apply the ply for this game.
+          const Stone& mkChildPly = plys[plyIdx];
+          threadParams.game.Play(mkChildPly);
+          const FloatType minimax  = (*evalFunc)(threadParams.game);
+          threadParams.game.Undo();
+          // Collect best minimax for this thread.
+          if ((-1 == threadParams.bestPlyIdx) ||
+              (minimax > threadParams.bestMinimax))
+          {
+            threadParams.bestMinimax = minimax;
+            threadParams.bestPlyIdx = plyIdx;
           }
         }
       }
@@ -129,34 +144,11 @@ struct AlphaBetaPruning
         int bestPlyIdx;
         GatherRunThreadResults<std::greater<FloatType> >(threadData,
                                                          &minimax, &bestPlyIdx);
-        // Set MINIMax ply.
+        // Set minimax ply.
         *stone = plys[bestPlyIdx];
       }
     }
 
-    --depth;
-    if (std::numeric_limits<FloatType>::min() == minimax)
-    {
-//      std::cout << "No guaranteed victory." << std::endl;
-      // Select ply based on heuristic.
-      game->Play(plys.front());
-      FloatType bestPlyScore = (*evalFunc)(*game);
-      *stone = plys.front();
-      game->Undo();
-      for (Voronoi::StoneList::const_iterator testPly = plys.begin();
-           testPly != plys.end();
-           ++testPly)
-      {
-        game->Play(*testPly);
-        FloatType plyScore = (*evalFunc)(*game);
-        if (plyScore > bestPlyScore)
-        {
-          bestPlyScore = plyScore;
-          *stone = *testPly;
-        }
-        game->Undo();
-      }
-    }
     return minimax;
   }
 
@@ -164,7 +156,7 @@ private:
   /// <summary> Helper to identify MAX based on depth. </summary>
   inline static bool IdentifyMax(const int depth)
   {
-    return depth & 1;
+    return !(depth & 1);
   }
 
   template <typename MinimaxFunc>
@@ -199,17 +191,10 @@ private:
     assert(params && evalFunc);
 
     Voronoi* game = &params->game;
-    volatile bool* victoryIsMine = params->victoryIsMine;
     // Score all plys to find minimax.
     MinimaxFunc minimaxFunc;
     for (; testPly != endPly; ++testPly)
     {
-      if (*victoryIsMine)
-      {
-        //std::cout << "Got victory signal." << std::endl;
-        *minimax = 0;
-        break;
-      }
       game->Play(*testPly);
       FloatType score = RunThread(*alpha, *beta, plyFunc, evalFunc, params);
       if (minimaxFunc(score, *minimax))
@@ -236,25 +221,27 @@ private:
     int& depth = params->depth;
     const int& maxDepth = params->maxDepth;
     Voronoi* game = &params->game;
+    assert(depth >= 0);
     assert(depth < maxDepth);
     ++depth;
 
-    // Get the children of the current game.
-    Voronoi::StoneList plys;
-    plyFunc(*game, &plys);
-    // Collect incoming a and b.
-    FloatType alpha = a;
-    FloatType beta = b;
-    // Is this a leaf?
-    FloatType minimax;
-    assert(!plys.empty());
     // If depth bound reached, return score current game.
-    if (maxDepth == depth)
+    FloatType minimax;
+    if (depth == maxDepth)
     {
       minimax = (*evalFunc)(*game);
     }
     else
     {
+      // Get the children of the current game.
+      Voronoi::StoneList& plys = params->depthPlys[depth - 1];
+      plys.clear();
+      plyFunc(*game, &plys);
+      // Collect incoming a and b.
+      FloatType alpha = a;
+      FloatType beta = b;
+      // Is this a leaf?
+      assert(!plys.empty());
       // Init score.
       Voronoi::StoneList::const_iterator testPly = plys.begin();
       {
@@ -306,4 +293,4 @@ private:
 using namespace voronoi;
 }
 
-#endif //_NO_TIPPING_GAME_ALPHABETAPRUNING_H_
+#endif //_HPS_VORONOI_ALPHABETAPRUNING_H_
